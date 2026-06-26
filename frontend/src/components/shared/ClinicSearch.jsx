@@ -1,8 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CLINICS } from "../../data/mock";
+import { searchApi } from "../../api";
+import { toClinicCard } from "../../lib/partnerCard";
 
 // ---------- Поиск по клиникам (переиспользуемый) ----------
 // Используется и на лендинге, и на экране поиска в приложении.
+// Источник данных: бэкенд GET /search?q=. Если бэкенд недоступен — мягкий
+// фолбэк на демо-набор CLINICS, чтобы интерфейс оставался рабочим офлайн.
 // Props:
 //   placeholder, noneText — тексты (для локализации)
 //   onSelect(clinic)      — клик по строке (в приложении -> переход на партнёра)
@@ -10,15 +14,40 @@ import { CLINICS } from "../../data/mock";
 export default function ClinicSearch({ placeholder, noneText, onSelect, showArrow = false }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const [remote, setRemote] = useState(null); // результаты бэкенда (null = не загружено)
+  const debounceRef = useRef(null);
 
-  // Фильтрация по ключевым словам и названию (без учёта регистра).
-  const matched = useMemo(() => {
+  // Локальная фильтрация демо-набора (фолбэк и пустой запрос).
+  const localMatched = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return CLINICS;
     return CLINICS.filter(
       (c) => c.keywords.includes(q) || c.name.toLowerCase().includes(q)
     );
   }, [query]);
+
+  // Дебаунс-запрос к бэкенду при вводе.
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setRemote(null);
+      return;
+    }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await searchApi.query(q);
+        const partners = (data?.partners || []).map((p) => toClinicCard(p));
+        setRemote(partners);
+      } catch {
+        setRemote(null); // бэкенд недоступен → используем localMatched
+      }
+    }, 250);
+    return () => clearTimeout(debounceRef.current);
+  }, [query]);
+
+  // Что показываем: результаты бэкенда, если есть; иначе локальный фолбэк.
+  const matched = remote !== null ? remote : localMatched;
 
   return (
     <div className="flex flex-col gap-[10px]">
@@ -67,10 +96,12 @@ export default function ClinicSearch({ placeholder, noneText, onSelect, showArro
               <div className="font-semibold text-[15.5px]">{c.name}</div>
               <div className="text-[13px] text-ink/45 mt-[2px]">{c.meta}</div>
             </div>
-            <div className="text-right shrink-0">
-              <div className="text-[11.5px] text-ink/40">от</div>
-              <div className="font-bold text-[15px]" style={{ color: "#5BE892" }}>{c.from} ₸</div>
-            </div>
+            {c.from != null && (
+              <div className="text-right shrink-0">
+                <div className="text-[11.5px] text-ink/40">от</div>
+                <div className="font-bold text-[15px]" style={{ color: "#5BE892" }}>{c.from} ₸</div>
+              </div>
+            )}
             {showArrow && (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(245,245,247,.3)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m9 6 6 6-6 6" />

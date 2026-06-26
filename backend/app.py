@@ -32,6 +32,13 @@ def create_app(config_object=None):
 
     with app.app_context():
         db.create_all()
+        # Авто-сид при первом запуске (идемпотентно). В тестах не наполняем.
+        if not app.config.get('TESTING'):
+            try:
+                from seed_data import seed_all
+                seed_all()
+            except Exception as e:  # noqa: BLE001 — сид не должен ронять старт
+                print(f"[seed] skipped: {e}")
 
     # --- Регистрация блюпринтов ---
     from routes.catalog import catalog_bp
@@ -42,7 +49,9 @@ def create_app(config_object=None):
     from routes.review import review_bp
     from routes.dashboard import dashboard_bp
     from routes.admin import admin_bp
+    from routes.docs import docs_bp
 
+    app.register_blueprint(docs_bp, url_prefix='/api')           # /api/docs, /api/openapi.json
     app.register_blueprint(catalog_bp, url_prefix='/api/catalog')
     app.register_blueprint(upload_bp, url_prefix='/api/archives')
     app.register_blueprint(services_bp, url_prefix='/api/services')

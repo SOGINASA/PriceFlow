@@ -17,9 +17,13 @@ class Config:
     _db_url = os.environ.get('DATABASE_URL')
     if not _db_url:
         import sys
+        # Папка под локальный SQLite-файл должна существовать, иначе sqlite3
+        # бросит "unable to open database file".
+        _sqlite_dir = os.path.join(BACKEND_DIR, 'database')
+        os.makedirs(_sqlite_dir, exist_ok=True)
         print(
-            "[WARNING] DATABASE_URL не задан. Использую локальный SQLite fallback. "
-            "Для соответствия ТЗ задайте DATABASE_URL=postgresql://...",
+            "[WARNING] DATABASE_URL is not set. Using local SQLite fallback. "
+            "For TZ compliance set DATABASE_URL=postgresql://...",
             file=sys.stderr,
         )
     SQLALCHEMY_DATABASE_URI = _db_url or f"sqlite:///{os.path.join(BACKEND_DIR, 'database', 'dev.db')}"

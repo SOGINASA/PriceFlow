@@ -47,6 +47,52 @@ def _get_or_create_partner(name: str) -> Partner:
     return partner
 
 
+def _create_document(file_path: str, file_name: str):
+    """Создать PriceDocument из уже сохранённого файла (общий код для zip/loose)."""
+    partner = _get_or_create_partner(_guess_partner_name(file_name))
+    doc = PriceDocument(
+        partner_id=partner.partner_id,
+        file_name=file_name,
+        file_path=file_path,
+        file_format=detect_format(file_name),
+        effective_date=_guess_date(file_name),
+        parse_status=ParseStatus.PENDING,
+    )
+    db.session.add(doc)
+    db.session.flush()
+    return doc.doc_id
+
+
+def _enqueue(doc_ids):
+    from services.tasks import process_document
+    for doc_id in doc_ids:
+        try:
+            process_document.delay(doc_id)
+        except Exception as e:  # noqa: BLE001 — Redis может быть не поднят в dev
+            logger.warning('Не удалось поставить в очередь %s: %s', doc_id, e)
+
+
+def ingest_files(file_storages, enqueue=True):
+    """Принять отдельные прайс-файлы (не в архиве). Возвращает список doc_id."""
+    batch = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    out_dir = os.path.join(Config.EXTRACTED_DIR, batch)
+    os.makedirs(out_dir, exist_ok=True)
+
+    doc_ids = []
+    for fs in file_storages:
+        name = os.path.basename(fs.filename or '')
+        if not name.lower().endswith(_SUPPORTED):
+            continue
+        target = os.path.join(out_dir, name)
+        fs.save(target)
+        doc_ids.append(_create_document(target, name))
+
+    db.session.commit()
+    if enqueue:
+        _enqueue(doc_ids)
+    return doc_ids
+
+
 def ingest_archive(zip_path: str, enqueue=True):
     """Распаковать архив и создать PriceDocument'ы. Возвращает список doc_id."""
     batch = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
@@ -62,28 +108,9 @@ def ingest_archive(zip_path: str, enqueue=True):
             target = os.path.join(out_dir, safe_name)
             with zf.open(member) as src, open(target, 'wb') as dst:
                 dst.write(src.read())
-
-            partner = _get_or_create_partner(_guess_partner_name(safe_name))
-            doc = PriceDocument(
-                partner_id=partner.partner_id,
-                file_name=safe_name,
-                file_path=target,
-                file_format=detect_format(safe_name),
-                effective_date=_guess_date(safe_name),
-                parse_status=ParseStatus.PENDING,
-            )
-            db.session.add(doc)
-            db.session.flush()
-            doc_ids.append(doc.doc_id)
+            doc_ids.append(_create_document(target, safe_name))
 
     db.session.commit()
-
     if enqueue:
-        from services.tasks import process_document
-        for doc_id in doc_ids:
-            try:
-                process_document.delay(doc_id)
-            except Exception as e:  # noqa: BLE001 — Celery/Redis может быть не поднят в dev
-                logger.warning('Не удалось поставить в очередь %s: %s', doc_id, e)
-
+        _enqueue(doc_ids)
     return doc_ids

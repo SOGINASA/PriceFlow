@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
 import { ADMIN_WEEK_CHART, ADMIN_JOBS } from "../../data/mock";
 import StatTile from "../../components/ui/StatTile";
+import { dashboardApi, archivesApi } from "../../api";
 
-// Цвета бейджа статуса задачи.
+// Статусы обработки документа (бэкенд) → бейдж.
 const STATUS_STYLE = {
-  Готово: { color: "#5BE892", bg: "rgba(48,209,88,.12)", border: "rgba(48,209,88,.3)" },
-  Обработка: { color: "#9DB0FF", bg: "rgba(94,92,230,.14)", border: "rgba(94,92,230,.3)" },
-  Ошибка: { color: "#FF8B85", bg: "rgba(255,95,87,.12)", border: "rgba(255,95,87,.3)" },
+  done: { label: "Готово", color: "#5BE892", bg: "rgba(48,209,88,.12)", border: "rgba(48,209,88,.3)" },
+  processing: { label: "Обработка", color: "#9DB0FF", bg: "rgba(94,92,230,.14)", border: "rgba(94,92,230,.3)" },
+  pending: { label: "В очереди", color: "#9DB0FF", bg: "rgba(94,92,230,.1)", border: "rgba(94,92,230,.22)" },
+  needs_review: { label: "На ревью", color: "#FFD37E", bg: "rgba(255,193,94,.12)", border: "rgba(255,193,94,.3)" },
+  error: { label: "Ошибка", color: "#FF8B85", bg: "rgba(255,95,87,.12)", border: "rgba(255,95,87,.3)" },
+  // фолбэк для демо-данных (русские статусы)
+  Готово: { label: "Готово", color: "#5BE892", bg: "rgba(48,209,88,.12)", border: "rgba(48,209,88,.3)" },
+  Обработка: { label: "Обработка", color: "#9DB0FF", bg: "rgba(94,92,230,.14)", border: "rgba(94,92,230,.3)" },
+  Ошибка: { label: "Ошибка", color: "#FF8B85", bg: "rgba(255,95,87,.12)", border: "rgba(255,95,87,.3)" },
 };
 
 // Полоса состояния системы (анимируется по ширине при монтировании).
@@ -29,18 +36,69 @@ function SystemBar({ label, percent, accent }) {
   );
 }
 
+// Демо-задачи в формате таблицы (фолбэк).
+const MOCK_JOBS = ADMIN_JOBS.map((j) => ({
+  title: j.user,
+  files: j.files,
+  items: j.items,
+  status: j.status,
+  time: j.time,
+}));
+
 export default function AdminPage() {
+  const [stats, setStats] = useState(null);
+  const [jobs, setJobs] = useState(MOCK_JOBS);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [s, docs] = await Promise.all([
+          dashboardApi.stats(),
+          archivesApi.list({}),
+        ]);
+        if (!alive) return;
+        setStats(s);
+        if (Array.isArray(docs) && docs.length) {
+          setJobs(
+            docs.slice(0, 8).map((d) => ({
+              title: d.file_name,
+              files: (d.file_format || "—").toUpperCase(),
+              items: d.parse_status === "error" ? "—" : "✓",
+              status: d.parse_status,
+              time: d.parsed_at ? new Date(d.parsed_at).toLocaleString("ru-RU") : "—",
+            }))
+          );
+        }
+      } catch {
+        // бэкенд недоступен — остаёмся на демо-данных
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const max = Math.max(...ADMIN_WEEK_CHART);
   const days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+  // Живые показатели, если есть; иначе демо-числа.
+  const docsTotal = stats?.documents?.total ?? 1840;
+  const normRate = stats?.items?.normalization_rate_pct ?? 99;
+  const partners = stats?.partners ?? 1240;
+  const unmatched = stats?.items?.unmatched ?? 0;
+  const anomalies = stats?.items?.anomalies ?? 0;
+  const itemsTotal = stats?.items?.total ?? 1;
+  const queueLoad = Math.min(100, Math.round((unmatched / Math.max(itemsTotal, 1)) * 100));
 
   return (
     <section className="flex flex-col gap-5 animate-fade-up">
       {/* ---------- Показатели платформы ---------- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-[14px]">
-        <StatTile label="Пользователей" value={1840} separator trend="+12%" />
-        <StatTile label="Обработок сегодня" value={326} trend="+8%" />
-        <StatTile label="Клиник в базе" value={1240} separator trend="+3%" />
-        <StatTile label="Аптайм" value={99.98} decimals={2} suffix="%" trend="30 дн" />
+        <StatTile label="Документов" value={docsTotal} separator />
+        <StatTile label="Нормализация" value={normRate} decimals={1} suffix="%" accent="#5BE892" />
+        <StatTile label="Клиник в базе" value={partners} separator />
+        <StatTile label="В очереди ревью" value={unmatched + anomalies} />
       </div>
 
       {/* ---------- График недели + состояние системы ---------- */}
@@ -78,9 +136,9 @@ export default function AdminPage() {
         <div className="rounded-[20px] bg-white/[.025] border border-white/[.07] p-[22px]">
           <div className="font-display font-semibold text-base mb-[18px]">Состояние системы</div>
           <div className="flex flex-col gap-4">
-            <SystemBar label="Точность OCR" percent={99} accent="#5BE892" />
-            <SystemBar label="Загрузка очереди" percent={42} />
-            <SystemBar label="Хранилище" percent={68} />
+            <SystemBar label="Автонормализация" percent={Math.round(normRate)} accent="#5BE892" />
+            <SystemBar label="Загрузка очереди ревью" percent={queueLoad} />
+            <SystemBar label="Документов с ошибкой" percent={stats ? Math.round(((stats.documents?.errors ?? 0) / Math.max(stats.documents?.total ?? 1, 1)) * 100) : 4} />
           </div>
         </div>
       </div>
@@ -92,22 +150,22 @@ export default function AdminPage() {
           <table className="w-full border-collapse min-w-[560px]">
             <thead>
               <tr>
-                {["Пользователь", "Файлов", "Позиций", "Статус", "Время"].map((h, i) => (
+                {["Документ", "Формат", "Позиции", "Статус", "Время"].map((h, i) => (
                   <th key={h} className="py-[11px] px-[14px] first:pl-[22px] last:pr-[22px] text-[11.5px] font-semibold text-ink/40 uppercase tracking-[.04em]" style={{ textAlign: i === 4 ? "right" : "left" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {ADMIN_JOBS.map((j, i) => {
-                const s = STATUS_STYLE[j.status];
+              {jobs.map((j, i) => {
+                const s = STATUS_STYLE[j.status] || STATUS_STYLE.pending;
                 return (
                   <tr key={i} className="border-t border-white/[.05]" style={{ animation: `fadeUpItem .4s ${i * 50}ms cubic-bezier(.16,1,.3,1) both` }}>
-                    <td className="py-[13px] px-[22px] text-[13.5px] font-semibold">{j.user}</td>
+                    <td className="py-[13px] px-[22px] text-[13.5px] font-semibold max-w-[260px] truncate">{j.title}</td>
                     <td className="py-[13px] px-[14px] text-[13.5px] text-ink/65">{j.files}</td>
                     <td className="py-[13px] px-[14px] text-[13.5px] text-ink/65">{j.items}</td>
                     <td className="py-[13px] px-[14px]">
                       <span className="inline-flex items-center gap-[6px] px-[11px] py-[5px] rounded-lg text-xs font-semibold border" style={{ background: s.bg, borderColor: s.border, color: s.color }}>
-                        <span className="w-[6px] h-[6px] rounded-full" style={{ background: s.color }} />{j.status}
+                        <span className="w-[6px] h-[6px] rounded-full" style={{ background: s.color }} />{s.label}
                       </span>
                     </td>
                     <td className="py-[13px] px-[22px] text-[13px] text-ink/45 text-right">{j.time}</td>

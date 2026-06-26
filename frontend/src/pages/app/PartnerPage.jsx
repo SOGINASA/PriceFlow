@@ -1,24 +1,77 @@
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { CLINICS, REPORT_ROWS } from "../../data/mock";
 import { useToast } from "../../components/ui/Toast";
+import { partnersApi } from "../../api";
+import { toClinicCard } from "../../lib/partnerCard";
 
-// Колонка прайса берётся из REPORT_ROWS по ключу клиники (alpha/city/health).
-// Для остальных клиник показываем цену «Альфы» как заглушку до подключения API.
+// Демо-прайс (фолбэк, если бэкенд недоступен): цена резидента из отчёта +
+// цена нерезидента (+15%).
 const COLUMN_KEY = { alpha: "alpha", city: "city", health: "health" };
+
+function mockServices(id) {
+  const colKey = COLUMN_KEY[id] || "alpha";
+  return REPORT_ROWS.map((r) => {
+    const resident = Number(r[colKey].replace(/\s/g, ""));
+    const nonResident = Math.round((resident * 1.15) / 100) * 100;
+    return {
+      service: r.service,
+      resident: r[colKey],
+      nonResident: nonResident.toLocaleString("ru-RU").replace(/,/g, " "),
+    };
+  });
+}
+
+const fmt = (v) =>
+  v == null ? "—" : Math.round(v).toLocaleString("ru-RU").replace(/,/g, " ");
 
 export default function PartnerPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const clinic = CLINICS.find((c) => c.id === id) || CLINICS[0];
-  const colKey = COLUMN_KEY[id] || "alpha";
 
-  // Прайс клиники: цена резидента из отчёта + цена нерезидента (+15%, демо).
-  const services = REPORT_ROWS.map((r) => {
-    const resident = Number(r[colKey].replace(/\s/g, ""));
-    const nonResident = Math.round((resident * 1.15) / 100) * 100;
-    return { service: r.service, resident: r[colKey], nonResident: nonResident.toLocaleString("ru-RU").replace(/,/g, " ") };
-  });
+  // По умолчанию — демо-данные; заменяются на ответ API при успешной загрузке.
+  const mockClinic = CLINICS.find((c) => c.id === id) || CLINICS[0];
+  const [clinic, setClinic] = useState(mockClinic);
+  const [services, setServices] = useState(() => mockServices(id));
+  const [effectiveDate, setEffectiveDate] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [partner, priceList] = await Promise.all([
+          partnersApi.get(id),
+          partnersApi.services(id),
+        ]);
+        if (!alive) return;
+        setClinic(toClinicCard(partner));
+        const items = (priceList?.items || []).map((it) => ({
+          service: it.service_name || it.service_name_raw,
+          resident: fmt(it.price_resident_kzt),
+          nonResident: fmt(it.price_nonresident_kzt),
+          date: it.effective_date,
+        }));
+        if (items.length) {
+          setServices(items);
+          const latest = items.map((i) => i.date).filter(Boolean).sort().pop();
+          setEffectiveDate(latest || null);
+        }
+      } catch {
+        // бэкенд недоступен — остаёмся на демо-данных
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+
+  const dateLabel = effectiveDate
+    ? new Date(effectiveDate).toLocaleDateString("ru-RU")
+    : "01.06.2026";
+
+  const phone = clinic.contact_phone || "+7 (727) 350-12-00";
+  const email = clinic.contact_email || "info@clinic.kz";
 
   return (
     <section className="flex flex-col gap-5 animate-fade-up">
@@ -42,16 +95,16 @@ export default function PartnerPage() {
         {/* Дата актуальности прайса (effective_date из ТЗ) */}
         <div className="inline-flex items-center gap-[7px] px-[13px] py-[7px] rounded-[10px] text-[12.5px] font-semibold border" style={{ background: "rgba(48,209,88,.12)", borderColor: "rgba(48,209,88,.3)", color: "#5BE892" }}>
           <span className="w-[7px] h-[7px] rounded-full" style={{ background: "#30D158", boxShadow: "0 0 8px #30D158" }} />
-          Прайс актуален · 01.06.2026
+          Прайс актуален · {dateLabel}
         </div>
       </div>
 
       {/* ---------- Контакты ---------- */}
       <div className="grid sm:grid-cols-3 gap-[14px]">
         {[
-          { label: "Город", value: clinic.city, icon: <><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11Z" /><circle cx="12" cy="10" r="2.5" /></> },
-          { label: "Телефон", value: "+7 (727) 350-12-00", icon: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L20 18l-2 2c-9 0-15-6-15-15z" /> },
-          { label: "Email", value: "info@clinic.kz", icon: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></> },
+          { label: "Город", value: clinic.city || "—", icon: <><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11Z" /><circle cx="12" cy="10" r="2.5" /></> },
+          { label: "Телефон", value: phone, icon: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L20 18l-2 2c-9 0-15-6-15-15z" /> },
+          { label: "Email", value: email, icon: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></> },
         ].map((c) => (
           <div key={c.label} className="flex items-center gap-3 px-4 py-4 rounded-[16px] bg-white/[.025] border border-white/[.07]">
             <span className="grid place-items-center w-10 h-10 rounded-[11px] bg-primary/[.12] border border-primary/25 shrink-0">
@@ -85,7 +138,7 @@ export default function PartnerPage() {
             </thead>
             <tbody>
               {services.map((s, i) => (
-                <tr key={s.service} className="border-t border-white/[.05]" style={{ animation: `fadeUpItem .4s ${i * 50}ms cubic-bezier(.16,1,.3,1) both` }}>
+                <tr key={`${s.service}-${i}`} className="border-t border-white/[.05]" style={{ animation: `fadeUpItem .4s ${i * 50}ms cubic-bezier(.16,1,.3,1) both` }}>
                   <td className="px-3 py-[11px] text-[13.5px] font-semibold">{s.service}</td>
                   <td className="px-3 py-[11px] text-[13.5px] text-ink/75">{s.resident} ₸</td>
                   <td className="px-3 py-[11px] text-[13.5px] text-ink/55">{s.nonResident} ₸</td>

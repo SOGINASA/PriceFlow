@@ -4,16 +4,44 @@ import useUploadStore from "../../store/useUploadStore";
 import { DEMO_FILES } from "../../data/mock";
 import { formatFileSize, fileTypeOf } from "../../lib/format";
 import FileIcon from "../../components/ui/FileIcon";
+import { archivesApi } from "../../api";
+import { useToast } from "../../components/ui/Toast";
 
 export default function UploadPage() {
   const navigate = useNavigate();
   const { files, addFiles, removeFile } = useUploadStore();
   const inputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const toast = useToast();
 
-  // Преобразуем нативные File в нашу структуру очереди.
+  // Преобразуем нативные File в нашу структуру очереди (raw — сам File для отправки).
   const mapFiles = (list) =>
-    Array.from(list).map((f) => ({ name: f.name, size: formatFileSize(f.size), type: fileTypeOf(f.name) }));
+    Array.from(list).map((f) => ({ name: f.name, size: formatFileSize(f.size), type: fileTypeOf(f.name), raw: f }));
+
+  // Запуск обработки: реальные файлы отправляем на бэкенд (sync — сразу в БД),
+  // затем переходим к экрану анализа. Если бэкенд недоступен или файлы демо —
+  // мягко продолжаем на мок-сценарий, чтобы интерфейс оставался рабочим.
+  const startProcessing = async () => {
+    const realFiles = files.map((f) => f.raw).filter(Boolean);
+    if (realFiles.length === 0) {
+      navigate("/app/analyzing");
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      realFiles.forEach((f) => fd.append("files", f, f.name));
+      const res = await archivesApi.upload(fd, { sync: true });
+      toast(`Принято документов: ${res?.documents ?? realFiles.length}`);
+      navigate("/app/analyzing");
+    } catch (e) {
+      toast("Бэкенд недоступен — показываю демо-обработку");
+      navigate("/app/analyzing");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const onDrop = (e) => {
     e.preventDefault();
@@ -108,16 +136,16 @@ export default function UploadPage() {
           <div className="text-[13px] text-ink/45 mt-[2px]">MedPartners распознает, нормализует и сравнит все позиции автоматически.</div>
         </div>
         <button
-          disabled={files.length === 0}
-          onClick={() => navigate("/app/analyzing")}
+          disabled={files.length === 0 || uploading}
+          onClick={startProcessing}
           className="inline-flex items-center gap-[10px] px-[26px] py-[14px] rounded-[13px] text-[15px] font-semibold transition-all whitespace-nowrap disabled:cursor-not-allowed"
           style={
-            files.length
+            files.length && !uploading
               ? { background: "linear-gradient(135deg,#6E8BFF,#5E5CE6)", color: "#fff", boxShadow: "0 10px 30px rgba(94,92,230,.4)" }
               : { background: "rgba(94,92,230,.3)", color: "rgba(255,255,255,.5)" }
           }
         >
-          Запустить обработку
+          {uploading ? "Загрузка…" : "Запустить обработку"}
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
         </button>
       </div>

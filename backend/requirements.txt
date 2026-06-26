@@ -9,31 +9,31 @@ alembic==1.17.1
 python-dotenv==1.0.0
 gunicorn==23.0.0
 
-# === База данных ===
-psycopg2-binary==2.9.10        # PostgreSQL драйвер
+# === Database ===
+psycopg2-binary==2.9.10        # PostgreSQL driver
 
-# === Очередь обработки ===
+# === Processing queue ===
 celery==5.4.0
 redis==5.2.1
 
-# === Извлечение данных (ТЗ 4.2) ===
-pdfplumber==0.11.4             # текстовый PDF + таблицы
-PyMuPDF==1.25.1               # быстрый разбор PDF (fitz)
-python-docx==1.1.2            # DOCX + tracked changes
-openpyxl==3.1.5              # XLSX
-pandas==2.2.3               # табличная постобработка
+# === Data extraction (TZ 4.2) ===
+pdfplumber==0.11.4             # text PDF + tables
+PyMuPDF==1.25.1                # fast PDF parsing (fitz)
+python-docx==1.1.2             # DOCX + tracked changes
+openpyxl==3.1.5                # XLSX
+pandas==2.2.3                  # tabular post-processing
 
-# === OCR (сканы) ===
-pytesseract==0.3.13          # обёртка Tesseract (бинарь ставится в систему/Docker)
-pdf2image==1.17.0            # рендер PDF-страниц в изображения (нужен poppler)
+# === OCR (scans) ===
+pytesseract==0.3.13            # Tesseract wrapper (binary installed in system/Docker)
+pdf2image==1.17.0             # render PDF pages to images (requires poppler)
 Pillow==11.0.0
 
-# === Нормализация / нечёткий поиск (ТЗ 4.3) ===
+# === Normalization / fuzzy matching (TZ 4.3) ===
 rapidfuzz==3.10.1
-# sentence-transformers==3.3.1  # опционально: семантический матчинг по эмбеддингам
+# sentence-transformers==3.3.1  # optional: semantic matching via embeddings
 
-# === Внешний HTTP (опц. облачный OCR / LLM) ===
+# === External HTTP (optional cloud OCR / LLM) ===
 requests==2.32.5
 
-# === Тесты ===
+# === Tests ===
 pytest==9.0.2

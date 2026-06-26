@@ -12,7 +12,7 @@ from flask import Blueprint, request, jsonify
 
 from config import Config
 from models import db, PriceDocument, ParseStatus
-from services.archive_service import ingest_archive
+from services.archive_service import ingest_archive, ingest_files
 
 logger = logging.getLogger(__name__)
 upload_bp = Blueprint('archives', __name__)
@@ -20,27 +20,34 @@ upload_bp = Blueprint('archives', __name__)
 
 @upload_bp.route('', methods=['POST'])
 def upload_archive():
-    """Принять ZIP-архив прайсов. multipart/form-data, поле 'file'."""
-    f = request.files.get('file')
-    if not f or not f.filename.lower().endswith('.zip'):
-        return jsonify({'error': 'Ожидается ZIP-архив в поле file'}), 400
+    """Принять прайсы: либо ZIP-архив (поле 'file'), либо отдельные файлы (поле 'files').
 
-    os.makedirs(Config.ARCHIVE_DIR, exist_ok=True)
-    saved = os.path.join(Config.ARCHIVE_DIR,
-                         f"{datetime.utcnow():%Y%m%d_%H%M%S}_{f.filename}")
-    f.save(saved)
-
-    # enqueue=True ставит в Celery; при недоступном Redis документы остаются pending
+    Query: sync=1 — обработать синхронно (без Celery/Redis, удобно для демо).
+    """
     enqueue = request.args.get('sync') != '1'
-    doc_ids = ingest_archive(saved, enqueue=enqueue)
+
+    f = request.files.get('file')
+    loose = request.files.getlist('files')
+
+    if f and f.filename.lower().endswith('.zip'):
+        os.makedirs(Config.ARCHIVE_DIR, exist_ok=True)
+        saved = os.path.join(Config.ARCHIVE_DIR,
+                             f"{datetime.utcnow():%Y%m%d_%H%M%S}_{f.filename}")
+        f.save(saved)
+        doc_ids = ingest_archive(saved, enqueue=enqueue)
+        source = os.path.basename(saved)
+    elif loose:
+        doc_ids = ingest_files(loose, enqueue=enqueue)
+        source = f'{len(loose)} файл(ов)'
+    else:
+        return jsonify({'error': "Ожидается ZIP в поле 'file' или файлы в поле 'files'"}), 400
 
     if not enqueue:  # синхронная обработка для dev/демо
         from services.tasks import process_document_sync
         for doc_id in doc_ids:
             process_document_sync(doc_id)
 
-    return jsonify({'archive': os.path.basename(saved), 'documents': len(doc_ids),
-                    'doc_ids': doc_ids}), 201
+    return jsonify({'source': source, 'documents': len(doc_ids), 'doc_ids': doc_ids}), 201
 
 
 @upload_bp.route('', methods=['GET'])

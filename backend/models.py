@@ -15,6 +15,7 @@ import uuid
 from datetime import datetime, timezone, date
 
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
@@ -215,6 +216,44 @@ class PriceItem(db.Model):
 # ---------------------------------------------------------------------------
 # Версионирование цен (история хранится бессрочно — ТЗ 4.4 / 5)
 # ---------------------------------------------------------------------------
+class Role:
+    USER = 'user'
+    OPERATOR = 'operator'   # верифицирует очереди
+    ADMIN = 'admin'
+    ALL = (USER, OPERATOR, ADMIN)
+
+
+class User(db.Model):
+    """Учётная запись: операторы/админ работают с очередями верификации,
+    обычные пользователи — поиск. Пароли хранятся как hash (werkzeug)."""
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    full_name = db.Column(db.String(120))
+    role = db.Column(db.String(20), default=Role.USER, index=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=_utc_now)
+    last_login = db.Column(db.DateTime)
+
+    def set_password(self, raw):
+        self.password_hash = generate_password_hash(raw)
+
+    def check_password(self, raw):
+        return check_password_hash(self.password_hash, raw)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+            'full_name': self.full_name,
+            'role': self.role,
+            'is_active': self.is_active,
+            'created_at': _iso(self.created_at),
+        }
+
+
 class PriceItemHistory(db.Model):
     __tablename__ = 'price_item_history'
 
