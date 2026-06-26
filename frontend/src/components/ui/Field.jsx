@@ -2,7 +2,7 @@ import { useState } from "react";
 
 // ---------- Поле ввода с подписью и фокус-обводкой ----------
 // Повторяет стиль инпутов из дизайна (фокус: фиолетовая рамка + glow).
-export default function Field({ label, type = "text", placeholder, value, onChange }) {
+export default function Field({ label, type = "text", placeholder, value, onChange, onKeyDown }) {
   const [focused, setFocused] = useState(false);
   return (
     <label className="flex flex-col gap-[7px]">
@@ -12,6 +12,7 @@ export default function Field({ label, type = "text", placeholder, value, onChan
         placeholder={placeholder}
         value={value}
         onChange={onChange}
+        onKeyDown={onKeyDown}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         className={`w-full px-[15px] py-[13px] rounded-xl text-ink text-[15px] outline-none transition-all border bg-[rgba(12,12,18,0.7)] ${

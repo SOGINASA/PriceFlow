@@ -12,12 +12,28 @@ UUID-идентификаторы хранятся как строки (db.Strin
 SQLite/PostgreSQL. На Postgres при желании можно перейти на native UUID.
 """
 import uuid
+import sqlite3
 from datetime import datetime, timezone, date
 
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
+
+
+# SQLite: WAL + busy_timeout, чтобы параллельные чтения (бейдж уведомлений,
+# дашборд) не давали "database is locked" во время записи при загрузке прайсов.
+# В WAL читатели не блокируют писателя; busy_timeout даёт ждать лок, а не падать.
+@event.listens_for(Engine, 'connect')
+def _set_sqlite_pragmas(dbapi_connection, _connection_record):
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cur = dbapi_connection.cursor()
+        cur.execute('PRAGMA journal_mode=WAL')
+        cur.execute('PRAGMA busy_timeout=30000')   # ждать лок до 30с
+        cur.execute('PRAGMA synchronous=NORMAL')    # безопасно для WAL, быстрее
+        cur.close()
 
 
 def _uuid():
@@ -162,6 +178,36 @@ class Currency:
     USD = 'USD'
     RUB = 'RUB'
     ALL = (KZT, USD, RUB)
+
+
+# ---------------------------------------------------------------------------
+# Курс валюты к KZT на дату (ТЗ 4.4: «валюта не KZT → конвертировать по курсу
+# на дату прайса»). Храним историю курсов, чтобы пересчитывать цену по курсу,
+# действовавшему в момент прайсинга, а не текущему.
+# ---------------------------------------------------------------------------
+class ExchangeRate(db.Model):
+    __tablename__ = 'exchange_rates'
+
+    id = db.Column(db.Integer, primary_key=True)
+    currency = db.Column(db.String(8), nullable=False, index=True)   # USD / RUB (для KZT курс всегда 1)
+    date = db.Column(db.Date, nullable=False, index=True)            # дата действия курса
+    rate = db.Column(db.Numeric(18, 6), nullable=False)             # 1 ед. валюты = rate KZT
+    source = db.Column(db.String(20), default='manual')             # nbk / fallback / manual
+    fetched_at = db.Column(db.DateTime, default=_utc_now)
+
+    __table_args__ = (
+        db.UniqueConstraint('currency', 'date', name='uq_exchange_rate_currency_date'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'currency': self.currency,
+            'date': _iso(self.date),
+            'rate': float(self.rate) if self.rate is not None else None,
+            'source': self.source,
+            'fetched_at': _iso(self.fetched_at),
+        }
 
 
 class PriceItem(db.Model):

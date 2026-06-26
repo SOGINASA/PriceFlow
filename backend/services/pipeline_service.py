@@ -12,6 +12,7 @@ from models import (
 from services.extractors import get_extractor
 from services import normalization_service as norm
 from services import validation_service as val
+from services import currency_service as fx
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,9 @@ def process_document(doc_id: str):
         )
         log.append(f'Извлечено {total}, автосопоставлено {auto_matched}')
         _finish(doc, log)
+        # Авто-формирование справочника вынесено на УРОВЕНЬ ПАКЕТА загрузки
+        # (routes/upload), чтобы не перестраивать справочник на каждый документ
+        # и не держать долгую запись (иначе SQLite «database is locked»).
     except Exception as e:  # noqa: BLE001
         logger.exception('pipeline failed for %s', doc_id)
         db.session.rollback()
@@ -79,15 +83,16 @@ def _extract_with_ocr_fallback(doc, log):
 
 
 def _build_item(doc, row) -> PriceItem:
+    # Валюта не KZT → пересчёт по курсу на дату прайса, оригинал сохраняем (ТЗ 4.4).
     currency = row.currency or Currency.KZT
     return PriceItem(
         doc_id=doc.doc_id,
         partner_id=doc.partner_id,
         service_name_raw=row.service_name_raw,
         service_code_source=row.service_code_source,
-        price_resident_kzt=val.convert_to_kzt(row.price_resident, currency, doc.effective_date),
-        price_nonresident_kzt=val.convert_to_kzt(row.price_nonresident, currency, doc.effective_date),
-        price_original=row.price_resident,
+        price_resident_kzt=fx.convert_to_kzt(row.price_resident, currency, doc.effective_date),
+        price_nonresident_kzt=fx.convert_to_kzt(row.price_nonresident, currency, doc.effective_date),
+        price_original=row.price_resident,           # цена в исходной валюте (резидентская)
         currency_original=currency,
         effective_date=doc.effective_date,
         is_active=True,

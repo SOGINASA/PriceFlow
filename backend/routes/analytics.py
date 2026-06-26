@@ -1,5 +1,7 @@
 """Аналитика цен (анализ — ТЗ 4.5/4.6). Без ML — агрегации по БД.
 
+GET /api/analytics/reports                    — список сводных отчётов (по городам)
+GET /api/analytics/reports/<report_id>        — детальный отчёт: сравнение + разброс
 GET /api/analytics/services/<id>/compare   — сравнение цен по клиникам + статистика
 GET /api/analytics/services/<id>/by-city    — срез цен услуги по городам
 GET /api/analytics/services/<id>/trend       — динамика цены во времени (?partner_id=)
@@ -10,6 +12,20 @@ from flask import Blueprint, request, jsonify
 from services import analytics_service as analytics
 
 analytics_bp = Blueprint('analytics', __name__)
+
+
+@analytics_bp.route('/reports', methods=['GET'])
+def reports():
+    """Список сводных отчётов (по городам) с реальными показателями обработки."""
+    return jsonify(analytics.list_reports())
+
+
+@analytics_bp.route('/reports/<report_id>', methods=['GET'])
+def report_detail(report_id):
+    data = analytics.build_report(report_id)
+    if data is None:
+        return jsonify({'error': 'Отчёт не найден'}), 404
+    return jsonify(data)
 
 
 @analytics_bp.route('/services/<service_id>/compare', methods=['GET'])

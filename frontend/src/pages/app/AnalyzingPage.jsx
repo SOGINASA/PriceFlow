@@ -1,45 +1,79 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useUploadStore from "../../store/useUploadStore";
-import { ANALYSIS_LOGS } from "../../data/mock";
+import { archivesApi } from "../../api";
 
 const RING_CIRC = 553; // длина прогресс-кольца (r=88)
 const PHASES = ["Загрузка", "Распознавание", "Нормализация", "Сравнение"];
 
 export default function AnalyzingPage() {
   const navigate = useNavigate();
-  const hasFiles = useUploadStore((s) => s.files.length > 0);
   const [percent, setPercent] = useState(0);
   const [logLines, setLogLines] = useState([]);
-  const intervalRef = useRef(null);
 
-  // Если очередь пуста (зашли напрямую) — возвращаем на загрузку.
+  // Однократно: показываем РЕАЛЬНЫЙ журнал обработки по статусам документов,
+  // которые бэкенд уже обработал синхронно при загрузке. Прогресс-кольцо
+  // доходит до 100% только после получения реальных статусов.
   useEffect(() => {
-    if (!hasFiles) {
+    const { result, clear } = useUploadStore.getState();
+    if (!result?.doc_ids?.length) {
       navigate("/app/upload", { replace: true });
       return;
     }
-    // Прогресс с псевдослучайным шагом, как в дизайне.
-    let p = 0;
-    let logIndex = 0;
-    intervalRef.current = setInterval(() => {
-      p = Math.min(100, p + Math.random() * 3.4 + 1.4);
-      setPercent(p);
-      // Догоняем журнал по проценту прогресса.
-      const target = Math.floor((p / 100) * ANALYSIS_LOGS.length);
-      while (logIndex < target && logIndex < ANALYSIS_LOGS.length) {
-        const line = ANALYSIS_LOGS[logIndex++];
-        setLogLines((prev) => [...prev, line].slice(-6));
-      }
-      if (p >= 100) {
-        clearInterval(intervalRef.current);
-        setLogLines(ANALYSIS_LOGS.slice(-6));
-        setTimeout(() => navigate("/app/report/r1"), 900);
-      }
-    }, 95);
 
-    return () => clearInterval(intervalRef.current);
-  }, [hasFiles, navigate]);
+    let alive = true;
+    let done = false;
+    const log = [];
+    const pushLog = (line) => {
+      log.push(line);
+      if (alive) setLogLines([...log].slice(-6));
+    };
+
+    pushLog(`Принято документов: ${result.documents ?? result.doc_ids.length}`);
+
+    (async () => {
+      const statuses = await Promise.all(
+        result.doc_ids.map((id) => archivesApi.status(id).catch(() => null))
+      );
+      if (!alive) return;
+      let totalItems = 0;
+      statuses.forEach((d) => {
+        if (!d) return;
+        const fmt = (d.file_format || "файл").toUpperCase();
+        if (d.parse_status === "error") {
+          pushLog(`Ошибка обработки · ${d.file_name}`);
+        } else {
+          const cnt = d.items_count ?? 0;
+          totalItems += cnt;
+          pushLog(`${fmt} · ${d.file_name} → ${cnt} позиций`);
+        }
+      });
+      pushLog("Нормализация и сравнение цен · готово");
+      pushLog(`Всего позиций в базе: ${totalItems}`);
+      done = true;
+    })();
+
+    // Прогресс: до получения статусов «упирается» в 92%, затем доходит до 100%.
+    let p = 0;
+    const interval = setInterval(() => {
+      const cap = done ? 100 : 92;
+      p = Math.min(cap, p + Math.random() * 6 + 3);
+      if (alive) setPercent(p);
+      if (p >= 100) {
+        clearInterval(interval);
+        setTimeout(() => {
+          clear();
+          navigate("/app/report");
+        }, 800);
+      }
+    }, 90);
+
+    return () => {
+      alive = false;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const stepIdx = percent >= 100 ? 4 : Math.min(3, Math.floor(percent / 25));
   const ringOffset = RING_CIRC - (RING_CIRC * percent) / 100;

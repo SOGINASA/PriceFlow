@@ -69,6 +69,10 @@ python app.py                  # http://localhost:5252/api
 | POST | `/api/match` | ручное сопоставление позиции с услугой |
 | POST | `/api/verify` | подтвердить/отклонить/скорректировать |
 | GET | `/api/dashboard/stats` | метрики обработки и % нормализации |
+| GET | `/api/rates?currency=` | сохранённые курсы валют к KZT |
+| POST | `/api/rates` | задать курс вручную `{currency, date, rate}` |
+| POST | `/api/rates/refresh` | подтянуть курсы НБ РК `{date}` или `{start,end}` |
+| GET | `/api/rates/convert?amount=&currency=&date=` | превью пересчёта в KZT |
 
 ## Тесты
 
@@ -76,9 +80,31 @@ python app.py                  # http://localhost:5252/api
 pytest
 ```
 
+## Конвертация валют (ТЗ 4.4)
+
+Цены в валюте, отличной от KZT, пересчитываются в тенге **по курсу на дату прайса**
+(`effective_date`), а оригинал сохраняется в `price_original` / `currency_original`.
+
+- Валюта позиции распознаётся при парсинге (`$`/`USD`/`долл`, `₽`/`RUB`/`руб`,
+  `₸`/`KZT`/`тенге`) — см. `row_parser.detect_currency`.
+- Пересчёт — `services/currency_service.py`: курс берётся из таблицы
+  `exchange_rates` на дату прайса или ближайшую предшествующую (курс НБ РК
+  действует до следующей публикации).
+- Источник курсов — API НБ РК. При `FX_AUTO_FETCH=true` парсер сам тянет курс
+  на дату; иначе курсы наполняются через `POST /api/rates/refresh` или
+  задаются вручную. Если курсов нет и нет сети — статический фолбэк
+  `currency_service.STATIC_FALLBACK` (офлайн-демо/тесты).
+
+```bash
+# подтянуть курсы НБ РК за период
+curl -X POST localhost:5252/api/rates/refresh -H 'Content-Type: application/json' \
+     -d '{"start":"2025-01-01","end":"2025-12-31"}'
+# превью пересчёта 120 USD по курсу на 2025-03-01
+curl 'localhost:5252/api/rates/convert?amount=120&currency=USD&date=2025-03-01'
+```
+
 ## TODO (следующие шаги)
 
 - OpenAPI/Swagger (flask-smorest) — обязательно по ТЗ.
-- Реальные курсы валют на дату прайса (НБ РК) вместо заглушки в `validation_service.FX_RATES`.
 - PostgreSQL FTS вместо ILIKE в `routes/search.py`.
 - Семантический матчинг (эмбеддинги) для повышения % автонормализации.

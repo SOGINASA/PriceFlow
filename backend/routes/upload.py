@@ -26,6 +26,11 @@ def upload_archive():
     """
     enqueue = request.args.get('sync') != '1'
 
+    # Явная клиника/город из формы (опционально). Если не заданы — клиника
+    # определяется по имени файла (см. archive_service).
+    partner_name = (request.form.get('partner_name') or '').strip() or None
+    city = (request.form.get('city') or '').strip() or None
+
     f = request.files.get('file')
     loose = request.files.getlist('files')
 
@@ -34,10 +39,12 @@ def upload_archive():
         saved = os.path.join(Config.ARCHIVE_DIR,
                              f"{datetime.utcnow():%Y%m%d_%H%M%S}_{f.filename}")
         f.save(saved)
-        doc_ids = ingest_archive(saved, enqueue=enqueue)
+        doc_ids = ingest_archive(saved, enqueue=enqueue,
+                                 partner_name=partner_name, city=city)
         source = os.path.basename(saved)
     elif loose:
-        doc_ids = ingest_files(loose, enqueue=enqueue)
+        doc_ids = ingest_files(loose, enqueue=enqueue,
+                               partner_name=partner_name, city=city)
         source = f'{len(loose)} файл(ов)'
     else:
         return jsonify({'error': "Ожидается ZIP в поле 'file' или файлы в поле 'files'"}), 400
@@ -46,6 +53,16 @@ def upload_archive():
         from services.tasks import process_document_sync
         for doc_id in doc_ids:
             process_document_sync(doc_id)
+
+        # Авто-формирование справочника (ТЗ §7) — ОДИН раз на всю загрузку, а не на
+        # каждый документ, чтобы не держать долгую запись (SQLite lock).
+        if Config.AUTO_BUILD_CATALOG:
+            try:
+                from services import catalog_service
+                catalog_service.build_catalog_from_items(
+                    threshold=Config.CATALOG_CLUSTER_THRESHOLD, only_unmatched=True)
+            except Exception as e:  # noqa: BLE001 — не ронять ответ загрузки
+                logger.warning('auto catalog build skipped: %s', e)
 
     return jsonify({'source': source, 'documents': len(doc_ids), 'doc_ids': doc_ids}), 201
 

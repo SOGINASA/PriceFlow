@@ -7,11 +7,47 @@ import logging
 
 from flask import Blueprint, request, jsonify
 
-from models import db, Service
+from models import db, Service, PriceItem
+from services import normalization_service as norm
+from services import catalog_service
 from services.extractors.row_parser import to_number  # noqa: F401 (consistency)
 
 logger = logging.getLogger(__name__)
 catalog_bp = Blueprint('catalog', __name__)
+
+
+@catalog_bp.route('/build', methods=['POST'])
+def build_catalog():
+    """Сформировать справочник из загруженных прайсов (ТЗ §7) и перепривязать позиции.
+
+    Body (опционально): {threshold: 0..100, only_unmatched: bool}.
+    """
+    data = request.get_json(silent=True) or {}
+    summary = catalog_service.build_catalog_from_items(
+        threshold=int(data.get('threshold', 90)),
+        only_unmatched=data.get('only_unmatched', True),
+    )
+    return jsonify(summary)
+
+
+@catalog_bp.route('/export', methods=['GET'])
+def export_catalog():
+    """Выгрузить текущий справочник (JSON, совместим с /catalog/import)."""
+    resp = jsonify(catalog_service.export_catalog())
+    resp.headers['Content-Disposition'] = 'attachment; filename=services_catalog.json'
+    return resp
+
+
+@catalog_bp.route('/consolidate', methods=['POST'])
+def consolidate_catalog():
+    """Свести дубликаты-синонимы справочника к каноническому названию (ТЗ 4.3).
+
+    Body (опционально): {use_llm: bool}. По умолчанию use_llm=true (LLM-канонизация
+    при наличии ключа GROQ_API_KEY; иначе офлайн-нормализация).
+    """
+    data = request.get_json(silent=True) or {}
+    summary = catalog_service.consolidate_catalog(use_llm=data.get('use_llm', True))
+    return jsonify(summary)
 
 
 @catalog_bp.route('/import', methods=['POST'])
@@ -19,6 +55,8 @@ def import_catalog():
     """Импорт справочника. Принимает JSON-массив услуг или XLSX-файл (multipart).
 
     JSON-элемент: {service_id?, service_name, synonyms[], category, icd_code}
+    После upsert справочника автоматически пересопоставляет уже загруженные
+    несопоставленные позиции (service_id IS NULL). Отключается через ?rematch=0.
     """
     created, updated = 0, 0
 
@@ -49,7 +87,33 @@ def import_catalog():
         svc.is_active = r.get('is_active', True)
 
     db.session.commit()
-    return jsonify({'created': created, 'updated': updated, 'total': created + updated})
+
+    rematched = 0
+    if request.args.get('rematch') != '0':
+        rematched = _rematch_unmatched()
+
+    return jsonify({'created': created, 'updated': updated,
+                    'total': created + updated, 'rematched': rematched})
+
+
+def _rematch_unmatched():
+    """Прогнать автосопоставление по позициям без service_id (после смены справочника).
+
+    Возвращает число позиций, которые удалось привязать к услуге справочника.
+    """
+    index = norm._build_index()
+    if not index:
+        return 0
+    items = (PriceItem.query
+             .filter(PriceItem.service_id.is_(None), PriceItem.is_active.is_(True))
+             .all())
+    matched = 0
+    for item in items:
+        if norm.normalize_item(item, index):
+            matched += 1
+    if items:
+        db.session.commit()
+    return matched
 
 
 def _parse_xlsx(file_storage):

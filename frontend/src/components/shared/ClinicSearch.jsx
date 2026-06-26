@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { CLINICS } from "../../data/mock";
-import { searchApi } from "../../api";
+import { useEffect, useRef, useState } from "react";
+import { searchApi, partnersApi } from "../../api";
 import { toClinicCard } from "../../lib/partnerCard";
 
 // ---------- Поиск по клиникам (переиспользуемый) ----------
 // Используется и на лендинге, и на экране поиска в приложении.
-// Источник данных: бэкенд GET /search?q=. Если бэкенд недоступен — мягкий
-// фолбэк на демо-набор CLINICS, чтобы интерфейс оставался рабочим офлайн.
+// Источник данных: бэкенд GET /partners (список по умолчанию) и GET /search?q=
+// (полнотекстовый поиск). Все данные реальные.
 // Props:
 //   placeholder, noneText — тексты (для локализации)
 //   onSelect(clinic)      — клик по строке (в приложении -> переход на партнёра)
@@ -14,23 +13,25 @@ import { toClinicCard } from "../../lib/partnerCard";
 export default function ClinicSearch({ placeholder, noneText, onSelect, showArrow = false }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
-  const [remote, setRemote] = useState(null); // результаты бэкенда (null = не загружено)
+  const [defaultList, setDefaultList] = useState([]); // все клиники (пустой запрос)
+  const [results, setResults] = useState(null);       // результаты поиска (null = показываем defaultList)
   const debounceRef = useRef(null);
 
-  // Локальная фильтрация демо-набора (фолбэк и пустой запрос).
-  const localMatched = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return CLINICS;
-    return CLINICS.filter(
-      (c) => c.keywords.includes(q) || c.name.toLowerCase().includes(q)
-    );
-  }, [query]);
+  // Список всех клиник для пустого запроса.
+  useEffect(() => {
+    let alive = true;
+    partnersApi
+      .list({})
+      .then((ps) => { if (alive) setDefaultList((Array.isArray(ps) ? ps : []).map((p) => toClinicCard(p))); })
+      .catch(() => { if (alive) setDefaultList([]); });
+    return () => { alive = false; };
+  }, []);
 
   // Дебаунс-запрос к бэкенду при вводе.
   useEffect(() => {
     const q = query.trim();
     if (!q) {
-      setRemote(null);
+      setResults(null);
       return;
     }
     clearTimeout(debounceRef.current);
@@ -38,16 +39,16 @@ export default function ClinicSearch({ placeholder, noneText, onSelect, showArro
       try {
         const data = await searchApi.query(q);
         const partners = (data?.partners || []).map((p) => toClinicCard(p));
-        setRemote(partners);
+        setResults(partners);
       } catch {
-        setRemote(null); // бэкенд недоступен → используем localMatched
+        setResults([]);
       }
     }, 250);
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
-  // Что показываем: результаты бэкенда, если есть; иначе локальный фолбэк.
-  const matched = remote !== null ? remote : localMatched;
+  // Что показываем: результаты поиска, если есть запрос; иначе полный список.
+  const matched = results !== null ? results : defaultList;
 
   return (
     <div className="flex flex-col gap-[10px]">

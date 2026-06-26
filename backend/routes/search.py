@@ -8,7 +8,7 @@ MVP — ILIKE по именам. На PostgreSQL рекомендуется за
 from flask import Blueprint, request, jsonify
 
 from models import Service, Partner
-from services.analytics_service import price_summary_for_service
+from services.analytics_service import price_summary_for_service, partner_price_aggregates
 
 search_bp = Blueprint('search', __name__)
 
@@ -34,8 +34,18 @@ def search():
         d['price_summary'] = price_summary_for_service(s.service_id)
         services_out.append(d)
 
+    # к каждой клинике — число позиций и «от X ₸» для карточки
+    agg = partner_price_aggregates([p.partner_id for p in partners])
+    partners_out = []
+    for p in partners:
+        d = p.to_dict()
+        a = agg.get(p.partner_id) or {}
+        d['services_count'] = a.get('services_count', 0)
+        d['min_price_kzt'] = a.get('min_price_kzt')
+        partners_out.append(d)
+
     return jsonify({
         'query': q,
         'services': services_out,
-        'partners': [p.to_dict() for p in partners],
+        'partners': partners_out,
     })

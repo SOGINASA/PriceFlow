@@ -13,6 +13,10 @@ export function useCountUp(target, { decimals = 0, separator = false, duration =
     const el = ref.current;
     if (!el || !start) return;
 
+    // Цель могла измениться (например, данные пришли с бэкенда после монтирования)
+    // — разрешаем повторный прогон счётчика к новому значению.
+    startedRef.current = false;
+
     const animate = () => {
       if (startedRef.current) return;
       startedRef.current = true;

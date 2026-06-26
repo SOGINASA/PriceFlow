@@ -2,9 +2,10 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 // ---------- Стор аутентификации ----------
-// Хранит текущего пользователя, роль (user | operator | admin) и JWT.
-// Роль управляет доступом к разделам (аналитика — admin, верификация —
-// operator/admin). persist сохраняет сессию между перезагрузками.
+// Хранит текущего пользователя, роль (operator | admin) и JWT, полученный
+// от реального бэкенда (POST /api/admin/login). Роль управляет доступом к
+// разделам (аналитика — admin, верификация — operator/admin).
+// persist сохраняет сессию между перезагрузками.
 
 const useAuthStore = create(
   persist(
@@ -17,14 +18,6 @@ const useAuthStore = create(
       // Реальная сессия после входа через API.
       setSession: ({ user, role = "user", token = null }) =>
         set({ user, role, token, isAuthenticated: true }),
-
-      // Демо-вход (OAuth/биометрия — пока без бэкенда).
-      login: (user = { name: "Алия Нурлан", email: "" }) =>
-        set({ user, isAuthenticated: true }),
-
-      // Регистрация с выбором роли.
-      register: (user, role = "user") =>
-        set({ user, role, isAuthenticated: true }),
 
       setRole: (role) => set({ role }),
 

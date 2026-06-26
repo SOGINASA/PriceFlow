@@ -3,8 +3,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { ToastProvider } from "./components/ui/Toast";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/auth/LoginPage";
-import RegisterPage from "./pages/auth/RegisterPage";
-import BiometricPage from "./pages/auth/BiometricPage";
 
 import AppLayout from "./components/layout/AppLayout";
 import UploadPage from "./pages/app/UploadPage";
@@ -27,8 +25,6 @@ export default function App() {
       {/* Публичные страницы */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/biometric" element={<BiometricPage />} />
 
       {/* Рабочая область (общий layout: сайдбар + топбар) */}
       <Route path="/app" element={<AppLayout />}>

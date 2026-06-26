@@ -7,20 +7,14 @@ import logging
 from datetime import date
 
 from config import Config
-from models import db, PriceItem, PriceItemHistory, Currency
+from models import db, PriceItem, PriceItemHistory
+from services.currency_service import convert_to_kzt  # noqa: F401 — реэкспорт для совместимости
 
 logger = logging.getLogger(__name__)
 
-# Курсы валют к KZT — заглушка. В проде брать на дату прайса (НБ РК API).
-FX_RATES = {Currency.KZT: 1.0, Currency.USD: 470.0, Currency.RUB: 5.2}
-
-
-def convert_to_kzt(amount, currency: str, on_date: date = None):
-    """Конвертация в KZT по курсу на дату прайса (ТЗ 4.4). Оригинал сохраняется отдельно."""
-    if amount is None:
-        return None
-    rate = FX_RATES.get(currency, 1.0)
-    return round(float(amount) * rate, 2)
+# Конвертация валют вынесена в services.currency_service (курс на дату прайса,
+# таблица exchange_rates, фолбэк НБ РК). convert_to_kzt реэкспортируется выше,
+# чтобы существующие вызовы val.convert_to_kzt продолжали работать.
 
 
 def validate_row(row, effective_date: date, log: list) -> bool:

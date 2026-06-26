@@ -10,6 +10,11 @@ let idSeq = 0;
 const useUploadStore = create((set, get) => ({
   files: [], // [{ id, name, size, type }]
 
+  // Результат последней загрузки на бэкенд: { source, documents, doc_ids }.
+  // Используется экраном «Анализ» для показа реального журнала обработки.
+  result: null,
+  setResult: (result) => set({ result }),
+
   // Добавить файлы в очередь (нормализуем к единой структуре).
   addFiles: (incoming) =>
     set((state) => ({
@@ -24,7 +29,7 @@ const useUploadStore = create((set, get) => ({
     set((state) => ({ files: state.files.filter((f) => f.id !== id) })),
 
   // Очистить очередь (например, после успешной обработки).
-  clear: () => set({ files: [] }),
+  clear: () => set({ files: [], result: null }),
 
   // Признак готовности к запуску обработки.
   hasFiles: () => get().files.length > 0,

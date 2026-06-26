@@ -50,6 +50,7 @@ def create_app(config_object=None):
     from routes.dashboard import dashboard_bp
     from routes.analytics import analytics_bp
     from routes.admin import admin_bp
+    from routes.rates import rates_bp
     from routes.docs import docs_bp
 
     app.register_blueprint(docs_bp, url_prefix='/api')           # /api/docs, /api/openapi.json
@@ -62,6 +63,7 @@ def create_app(config_object=None):
     app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(rates_bp, url_prefix='/api/rates')
 
     @app.route('/api')
     def health():

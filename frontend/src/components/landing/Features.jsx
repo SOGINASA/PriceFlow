@@ -1,14 +1,13 @@
 import useI18n from "../../i18n/useI18n";
 import { useReveal, revealStyle } from "../../hooks/useReveal";
 
-// Иконки шести возможностей (порядок совпадает с translations.features.items).
+// Иконки возможностей (порядок совпадает с translations.features.items).
 const ICONS = [
   <><rect x="5" y="3" width="14" height="18" rx="2.5" /><path d="M8.5 8h7M8.5 12h7M8.5 16h4" /></>,
   <path d="M12 3l1.8 4.4L18 9l-4.2 1.6L12 15l-1.8-4.4L6 9l4.2-1.6L12 3Z" />,
   <><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" /></>,
   <path d="M12 4v10m0 0-3.5-3.5M12 14l3.5-3.5M5 18h14" />,
   <path d="M12 21s-7-4.3-7-9.5A4.5 4.5 0 0 1 12 8a4.5 4.5 0 0 1 7 3.5C19 16.7 12 21 12 21Z" />,
-  <><path d="M12 3 5 6v5c0 4.2 2.9 7.6 7 9 4.1-1.4 7-4.8 7-9V6l-7-3Z" /><path d="m9 12 2 2 4-4" /></>,
 ];
 
 function FeatureCard({ icon, title, desc, delay }) {

@@ -61,6 +61,20 @@ export const dashboardApi = {
   stats: () => api.get("/dashboard/stats"),
 };
 
+// --- Аналитика и сводные отчёты (анализ цен, ТЗ 4.5/4.6) ---
+export const analyticsApi = {
+  // GET /analytics/reports — список сводных отчётов (по городам)
+  reports: () => api.get("/analytics/reports"),
+  // GET /analytics/reports/{id} — детальный отчёт: сравнение цен + разброс
+  report: (id) => api.get(`/analytics/reports/${encodeURIComponent(id)}`),
+  // GET /analytics/services/{id}/compare — сравнение цены услуги по клиникам
+  compare: (serviceId) => api.get(`/analytics/services/${serviceId}/compare`),
+  // GET /analytics/services/{id}/by-city — срез цен услуги по городам
+  byCity: (serviceId) => api.get(`/analytics/services/${serviceId}/by-city`),
+  // GET /analytics/anomalies — отчёт по аномалиям цен
+  anomalies: (params) => api.get("/analytics/anomalies", { params }),
+};
+
 // --- Аутентификация оператора ---
 export const adminApi = {
   // POST /admin/login — { username, password } → { access_token }

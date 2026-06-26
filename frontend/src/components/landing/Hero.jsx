@@ -3,14 +3,32 @@ import { Link } from "react-router-dom";
 import Aurora from "../ui/Aurora";
 import useI18n from "../../i18n/useI18n";
 import { useReveal, revealStyle } from "../../hooks/useReveal";
+import { formatNumber } from "../../lib/format";
 
-// Высоты столбиков мини-графика «разброс цен» в карточке.
-const CHART_BARS = [42, 68, 54, 100, 76, 60];
+const fmtPrice = (v) => (v == null ? "—" : `${formatNumber(v)} ₸`);
 
-export default function Hero() {
+// Hero получает первый реальный отчёт (report) — карточка-превью строится из него.
+export default function Hero({ report }) {
   const { t } = useI18n();
   const tr = t();
   const [role, setRole] = useState("user");
+
+  // Данные карточки из реального отчёта (или нейтральная заглушка до загрузки).
+  const hasData = !!(report && report.summary);
+  const cardTitle = hasData ? report.title : tr.card.title;
+  const cardSub = hasData ? `${formatNumber(report.summary.items)} ${tr.card.unit}` : tr.card.sub;
+  const chartTitle = report?.chart_service ? `${tr.card.chartTitle} · ${report.chart_service}` : tr.card.chartTitle;
+  const bars = report?.chart?.length ? report.chart : [];
+  const barMax = bars.length ? Math.max(...bars) : 1;
+  const barMin = bars.length ? Math.min(...bars) : 0;
+  const firstRow = report?.rows?.[0];
+  const columns = report?.columns || [];
+  const listItems = firstRow
+    ? columns
+        .filter((c) => firstRow.prices[c.key] != null)
+        .slice(0, 3)
+        .map((c) => ({ name: c.label, price: firstRow.prices[c.key], best: c.key === firstRow.best }))
+    : [];
   const [eyebrowRef, eyebrowVis] = useReveal();
   const [titleRef, titleVis] = useReveal();
   const [subRef, subVis] = useReveal();
@@ -105,51 +123,54 @@ export default function Hero() {
           {/* Тело карточки */}
           <div className="p-[22px]">
             <div className="flex items-center justify-between mb-[18px]">
-              <div>
-                <div className="font-display font-semibold text-[17px]">{tr.card.title}</div>
-                <div className="text-[12.5px] text-ink/45 mt-[3px]">{tr.card.sub}</div>
+              <div className="min-w-0">
+                <div className="font-display font-semibold text-[17px] truncate">{cardTitle}</div>
+                <div className="text-[12.5px] text-ink/45 mt-[3px]">{cardSub}</div>
               </div>
-              <div className="inline-flex items-center gap-[7px] px-[13px] py-[7px] rounded-[10px] text-[12.5px] font-semibold border bg-success/[0.12] border-success/30 text-success-soft">
-                <span className="w-[7px] h-[7px] rounded-full bg-success shadow-[0_0_8px_#30D158]" />
-                {tr.card.badge}
-              </div>
+              {hasData && (
+                <div className="inline-flex items-center gap-[7px] px-[13px] py-[7px] rounded-[10px] text-[12.5px] font-semibold border bg-success/[0.12] border-success/30 text-success-soft shrink-0">
+                  <span className="w-[7px] h-[7px] rounded-full bg-success shadow-[0_0_8px_#30D158]" />
+                  {tr.card.badge}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-[14px]">
-              {/* Мини-график */}
+              {/* Мини-график разброса цен */}
               <div className="border border-white/[0.07] rounded-[14px] p-4 bg-white/[0.02]">
-                <div className="text-xs text-ink/45 mb-[14px]">{tr.card.chartTitle}</div>
+                <div className="text-xs text-ink/45 mb-[14px] truncate">{chartTitle}</div>
                 <div className="flex items-end gap-[9px] h-24">
-                  {CHART_BARS.map((h, i) => (
-                    <div key={i} className="flex-1 flex flex-col justify-end">
-                      <div
-                        className={`rounded-t-[6px] ${h === 100 ? "bg-bar-peak shadow-[0_0_18px_rgba(94,92,230,.5)]" : "bg-[linear-gradient(180deg,rgba(110,139,255,.7),rgba(110,139,255,.2))]"}`}
-                        style={{ height: `${h}%` }}
-                      />
-                    </div>
-                  ))}
+                  {bars.length ? (
+                    bars.map((v, i) => (
+                      <div key={i} className="flex-1 flex flex-col justify-end">
+                        <div
+                          className={`rounded-t-[6px] ${v === barMin ? "bg-bar-peak shadow-[0_0_18px_rgba(94,92,230,.5)]" : "bg-[linear-gradient(180deg,rgba(110,139,255,.7),rgba(110,139,255,.2))]"}`}
+                          style={{ height: `${barMax ? (v / barMax) * 100 : 0}%` }}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="w-full h-full grid place-items-center text-[12px] text-ink/30">{tr.card.empty}</div>
+                  )}
                 </div>
               </div>
 
-              {/* Список лучших цен */}
+              {/* Список лучших цен по услуге */}
               <div className="border border-white/[0.07] rounded-[14px] p-4 flex flex-col gap-[11px] bg-white/[0.02]">
-                <div className="text-xs text-ink/45">{tr.card.listTitle}</div>
-                {[
-                  ["Клиника «Альфа»", "14 900 ₸", true],
-                  ["Медцентр «Сити»", "18 200 ₸", false],
-                  ["«Здоровье+»", "21 500 ₸", false],
-                ].map(([name, price, best], i) => (
-                  <div key={i}>
-                    {i > 0 && <div className="h-px bg-white/[0.06] mb-[11px]" />}
-                    <div className="flex items-center justify-between">
-                      <span className={`text-[13px] ${best ? "text-ink/80" : "text-ink/55"}`}>{name}</span>
-                      <span className={`text-[13px] font-bold ${best ? "text-success-soft" : "text-ink/75"}`}>{price}</span>
+                <div className="text-xs text-ink/45 truncate">{firstRow ? firstRow.service : tr.card.listTitle}</div>
+                {listItems.length ? (
+                  listItems.map((it, i) => (
+                    <div key={i}>
+                      {i > 0 && <div className="h-px bg-white/[0.06] mb-[11px]" />}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-[13px] truncate ${it.best ? "text-ink/80" : "text-ink/55"}`}>{it.name}</span>
+                        <span className={`text-[13px] font-bold shrink-0 ${it.best ? "text-success-soft" : "text-ink/75"}`}>{fmtPrice(it.price)}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                <span className="mt-auto inline-flex items-center gap-[7px] text-[12.5px] font-semibold text-[#B9B6FF]">
-                  {tr.card.export} →
-                </span>
+                  ))
+                ) : (
+                  <div className="flex-1 grid place-items-center text-[12px] text-ink/30">{tr.card.empty}</div>
+                )}
               </div>
             </div>
           </div>

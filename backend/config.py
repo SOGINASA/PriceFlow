@@ -56,8 +56,31 @@ class Config:
     # Порог автосопоставления (cosine similarity). Выше — авто, ниже — очередь на ревью.
     MATCH_AUTO_THRESHOLD = float(os.environ.get('MATCH_AUTO_THRESHOLD', 0.85))
 
+    # Авто-формирование справочника из прайсов по мере загрузки (ТЗ §7): если
+    # организатор не дал готовый справочник, система сама добавляет «чистые»
+    # названия услуг при обработке документа. Коды/мусор и неоднозначное остаются
+    # в очереди unmatched для оператора. Порог склейки похожих названий в синонимы.
+    AUTO_BUILD_CATALOG = os.environ.get('AUTO_BUILD_CATALOG', 'true').lower() in ('1', 'true', 'yes')
+    CATALOG_CLUSTER_THRESHOLD = int(os.environ.get('CATALOG_CLUSTER_THRESHOLD', 90))
+
+    # === LLM-канонизация справочника (дедуп синонимов, ТЗ 4.3) ===
+    # Консолидация справочника (POST /catalog/consolidate) сводит дубликаты-синонимы
+    # к каноническому названию через LLM. Провайдер — OpenAI-совместимый (по умолч.
+    # Groq). Без ключа используется офлайн-нормализация (склейка вариантов порядка
+    # слов/пунктуации). Ключ задаётся в .env (GROQ_API_KEY), в репозиторий не кладём.
+    GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
+    GROQ_BASE_URL = os.environ.get('GROQ_BASE_URL', 'https://api.groq.com/openai/v1')
+    GROQ_MODEL = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
+    LLM_BATCH_SIZE = int(os.environ.get('LLM_BATCH_SIZE', 60))
+
     # === Валидация цен ===
     PRICE_ANOMALY_PCT = float(os.environ.get('PRICE_ANOMALY_PCT', 0.50))  # отклонение >50% → аномалия
+
+    # === Конвертация валют (ТЗ 4.4) ===
+    # При True парсер сам тянет курс на дату прайса из API НБ РК, если его нет
+    # в таблице exchange_rates. По умолчанию выключено — обработка офлайн и
+    # детерминирована; курсы наполняются через POST /api/rates/refresh или сид.
+    FX_AUTO_FETCH = os.environ.get('FX_AUTO_FETCH', 'false').lower() in ('1', 'true', 'yes')
 
     # === OCR (EasyOCR) ===
     # Языки EasyOCR через запятую. Казахский отдельного кода не имеет, но русская

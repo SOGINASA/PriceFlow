@@ -21,6 +21,7 @@ pdfplumber==0.11.4             # text PDF + tables
 PyMuPDF==1.25.1                # fast PDF parsing (fitz)
 python-docx==1.1.2             # DOCX + tracked changes
 openpyxl==3.1.5                # XLSX
+xlrd==2.0.1                    # legacy XLS (бинарный .xls, openpyxl его не читает)
 pandas==2.2.3                  # tabular post-processing
 
 # === OCR (scans) ===

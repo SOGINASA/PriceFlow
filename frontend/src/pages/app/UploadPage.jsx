@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useUploadStore from "../../store/useUploadStore";
-import { DEMO_FILES } from "../../data/mock";
 import { formatFileSize, fileTypeOf } from "../../lib/format";
 import FileIcon from "../../components/ui/FileIcon";
 import { archivesApi } from "../../api";
@@ -9,35 +8,39 @@ import { useToast } from "../../components/ui/Toast";
 
 export default function UploadPage() {
   const navigate = useNavigate();
-  const { files, addFiles, removeFile } = useUploadStore();
+  const { files, addFiles, removeFile, setResult } = useUploadStore();
   const inputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [partnerName, setPartnerName] = useState("");
+  const [city, setCity] = useState("");
   const toast = useToast();
 
   // Преобразуем нативные File в нашу структуру очереди (raw — сам File для отправки).
   const mapFiles = (list) =>
     Array.from(list).map((f) => ({ name: f.name, size: formatFileSize(f.size), type: fileTypeOf(f.name), raw: f }));
 
-  // Запуск обработки: реальные файлы отправляем на бэкенд (sync — сразу в БД),
-  // затем переходим к экрану анализа. Если бэкенд недоступен или файлы демо —
-  // мягко продолжаем на мок-сценарий, чтобы интерфейс оставался рабочим.
+  // Запуск обработки: файлы отправляем на бэкенд (sync — сразу обрабатываются
+  // и пишутся в БД), сохраняем ответ и переходим к экрану анализа, где
+  // показывается реальный журнал обработки.
   const startProcessing = async () => {
     const realFiles = files.map((f) => f.raw).filter(Boolean);
     if (realFiles.length === 0) {
-      navigate("/app/analyzing");
+      toast("Добавьте файлы прайсов для обработки");
       return;
     }
     setUploading(true);
     try {
       const fd = new FormData();
       realFiles.forEach((f) => fd.append("files", f, f.name));
+      if (partnerName.trim()) fd.append("partner_name", partnerName.trim());
+      if (city.trim()) fd.append("city", city.trim());
       const res = await archivesApi.upload(fd, { sync: true });
+      setResult(res);
       toast(`Принято документов: ${res?.documents ?? realFiles.length}`);
       navigate("/app/analyzing");
     } catch (e) {
-      toast("Бэкенд недоступен — показываю демо-обработку");
-      navigate("/app/analyzing");
+      toast("Не удалось загрузить файлы — проверьте бэкенд");
     } finally {
       setUploading(false);
     }
@@ -47,7 +50,7 @@ export default function UploadPage() {
     e.preventDefault();
     setDragOver(false);
     const dropped = Array.from(e.dataTransfer.files || []);
-    addFiles(dropped.length ? mapFiles(dropped) : DEMO_FILES);
+    if (dropped.length) addFiles(mapFiles(dropped));
   };
 
   const canRun = files.length > 0 && !uploading;
@@ -88,26 +91,46 @@ export default function UploadPage() {
         </div>
       </div>
 
-      {/* ---------- Заголовок очереди + демо-файлы ---------- */}
+      {/* ---------- Клиника и город (необязательно) ---------- */}
+      <div className="rounded-[18px] bg-white/[0.025] border border-white/[0.07] p-[18px] sm:p-5">
+        <div className="text-[14.5px] font-semibold">Клиника прайса</div>
+        <div className="text-[13px] text-ink/45 mt-[2px]">
+          Необязательно. Если не указать — клиника определится по имени файла, а город останется пустым.
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3 mt-4">
+          <label className="flex flex-col gap-[6px]">
+            <span className="text-[12px] text-ink/45">Название клиники</span>
+            <input
+              value={partnerName}
+              onChange={(e) => setPartnerName(e.target.value)}
+              placeholder="Напр. Клиника «Альфа»"
+              className="px-[14px] py-[11px] rounded-[11px] bg-[rgba(12,12,18,0.7)] border border-white/10 outline-none text-[14px] text-ink transition-colors focus:border-primary/60"
+            />
+          </label>
+          <label className="flex flex-col gap-[6px]">
+            <span className="text-[12px] text-ink/45">Город</span>
+            <input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Напр. Алматы"
+              className="px-[14px] py-[11px] rounded-[11px] bg-[rgba(12,12,18,0.7)] border border-white/10 outline-none text-[14px] text-ink transition-colors focus:border-primary/60"
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* ---------- Заголовок очереди ---------- */}
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-semibold text-ink/70">
           Файлы в очереди <span className="text-ink/40">({files.length})</span>
         </div>
-        <button
-          onClick={() => addFiles(DEMO_FILES)}
-          className="inline-flex items-center gap-2 px-[15px] py-[9px] rounded-[11px] bg-white/5 border border-white/10 text-ink text-[13px] font-semibold transition-colors hover:bg-white/[0.09]"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          <span className="max-[360px]:hidden">Добавить демо-файлы</span>
-          <span className="hidden max-[360px]:inline">Демо</span>
-        </button>
       </div>
 
       {/* ---------- Список файлов ---------- */}
       <div className="flex flex-col gap-[10px]">
         {files.length === 0 ? (
           <div className="p-[34px] text-center rounded-[18px] border border-white/[0.06] bg-white/[0.015] text-ink/40 text-[14.5px]">
-            Пока пусто. Перетащите файлы или добавьте демо-набор, чтобы увидеть обработку.
+            Пока пусто. Перетащите прайсы или выберите файлы, чтобы запустить обработку.
           </div>
         ) : (
           files.map((f) => (

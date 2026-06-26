@@ -16,6 +16,46 @@ _NONRESIDENT_KEYS = ('нерезидент', 'не резидент', 'non-resid
 _CODE_KEYS = ('код', 'code', 'артикул', 'шифр')
 _PRICE_RE = re.compile(r'\d[\d\s.,]*')
 
+# --- Распознавание валюты позиции (ТЗ 3.3 / 4.4) ---------------------------
+# KZT — валюта по умолчанию, поэтому в детекте важны прежде всего USD/RUB.
+# Совпадение по ГРАНИЦЕ СЛОВА (\b), иначе «зарубежья» → ложный RUB, «рубец» и т.п.
+# Символы валют (₽ $ ₸) и однозначные коды матчатся как есть.
+_CURRENCY_PATTERNS = (
+    ('USD', re.compile(r'\$|\busd\b|долл', re.I)),
+    # «руб», «руб.», «рубль/рублей» — но не «зарубежья» (нет \b перед руб) и не
+    # «рубец/рубцовый» (после руб идёт е/ц, а не граница слова или «л»).
+    ('RUB', re.compile(r'₽|\brub\b|\bруб(?:\b|л)', re.I)),
+    ('KZT', re.compile(r'₸|\bkzt\b|тенге|\bтг\b', re.I)),
+)
+# Что вырезать из ячейки, чтобы распознать «число-цену» рядом с символом валюты.
+_CURRENCY_STRIP_RE = re.compile(r'(?i)\$|₽|₸|usd|rub|kzt|руб\.?|долл\.?|тенге|тг\.?')
+
+
+def detect_currency(texts, default: str = 'KZT') -> str:
+    """Определить валюту по тексту ЦЕНОВЫХ ячеек/строки. Первая не-KZT валюта
+    побеждает. Совпадение по границе слова, чтобы «зарубежья»/«рубец» в тексте
+    не давали ложный RUB."""
+    joined = ' '.join(str(t) for t in texts if t is not None)
+    for currency, pat in _CURRENCY_PATTERNS:
+        if pat.search(joined):
+            return currency
+    return default
+
+
+def looks_like_price(cell) -> bool:
+    """Ячейка — цена, даже если рядом символ валюты: '$120', '5 200 ₽', '12 500'."""
+    cleaned = _CURRENCY_STRIP_RE.sub(' ', str(cell)).strip()
+    if not cleaned or not re.fullmatch(r'[\d\s.,]+', cleaned):
+        return False
+    num = to_number(cleaned)
+    return num is not None and num > 0
+
+
+def _is_currency_only(cell) -> bool:
+    """Ячейка состоит только из обозначения валюты ('$', 'USD', 'руб.')."""
+    s = str(cell).strip()
+    return bool(s) and _CURRENCY_STRIP_RE.fullmatch(s) is not None
+
 
 def to_number(value) -> Optional[float]:
     """Привести ячейку к числу. '12 500,00' -> 12500.0; '1 200 тг' -> 1200.0."""
@@ -79,21 +119,28 @@ def classify_columns(rows: List[list]):
 
 def parse_table_row(cells: List[str]) -> Optional[RawRow]:
     """Разбор строки таблицы без явного заголовка: первая текстовая ячейка —
-    название, числовые ячейки — цены (1-я резидент, 2-я нерезидент)."""
+    название, числовые ячейки — цены (1-я резидент, 2-я нерезидент). Валюта
+    определяется по ценовым ячейкам (ТЗ 4.4)."""
     name = None
-    prices = []
+    price_cells, currency_cells = [], []
     for c in cells:
-        num = to_number(c)
-        if num is not None and num > 0 and re.fullmatch(r'[\d\s.,]+', str(c).strip()):
-            prices.append(num)
-        elif name is None and str(c).strip() and not str(c).strip().isdigit():
-            name = str(c).strip()
+        s = str(c).strip()
+        if not s:
+            continue
+        if _is_currency_only(s):
+            currency_cells.append(s)
+        elif looks_like_price(s):
+            price_cells.append(s)
+        elif name is None and not s.isdigit():
+            name = s
     if not name:
         return None
+    prices = [to_number(c) for c in price_cells]
     return RawRow(
         service_name_raw=name,
         price_resident=prices[0] if prices else None,
         price_nonresident=prices[1] if len(prices) > 1 else None,
+        currency=detect_currency(price_cells + currency_cells),
     )
 
 
@@ -141,26 +188,28 @@ def parse_ocr_row(cells: List[str]) -> Optional[RawRow]:
 
     Так как каждая ячейка — отдельный бокс OCR, многоколоночные цены не слипаются.
     """
-    name_parts, prices = [], []
+    name_parts, price_cells, currency_cells = [], [], []
     for c in cells:
         s = str(c).strip()
         if not s:
             continue
-        # ячейка-цена: состоит только из цифр/разделителей и парсится в число
-        if re.fullmatch(r'[\d\s.,]+', s):
-            num = to_number(s)
-            if num is not None and num > 0:
-                prices.append(num)
+        if _is_currency_only(s):              # отдельный бокс «$» / «USD»
+            currency_cells.append(s)
+            continue
+        if looks_like_price(s):               # ячейка-цена (в т.ч. с символом валюты)
+            price_cells.append(s)
             continue
         name_parts.append(s)
 
     name = ' '.join(name_parts).strip(' .\t-—:')
     if not name or len(name) < 3:
         return None
+    prices = [to_number(c) for c in price_cells]
     return RawRow(
         service_name_raw=name,
         price_resident=prices[0] if prices else None,
         price_nonresident=prices[1] if len(prices) > 1 else None,
+        currency=detect_currency(price_cells + currency_cells),
     )
 
 
@@ -179,4 +228,7 @@ def parse_text_line(line: str) -> Optional[RawRow]:
     price = to_number(last.group(0))
     if price is None or price <= 0:
         return None
-    return RawRow(service_name_raw=name, price_resident=price)
+    # валюта — по «хвосту» вокруг цены (символ может стоять до или после числа),
+    # чтобы не зацепить буквы из названия услуги
+    currency = detect_currency([line[max(0, last.start() - 2):]])
+    return RawRow(service_name_raw=name, price_resident=price, currency=currency)

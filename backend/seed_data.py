@@ -1,11 +1,18 @@
-"""Наполнение БД синтетическими данными и учётками по умолчанию.
+"""Наполнение БД учётками по умолчанию (+ опциональные демо-данные).
 
-seed_all() идемпотентен: каждый блок наполняется только если соответствующая
-таблица пуста, поэтому его безопасно вызывать при каждом старте приложения
-(см. app.py — авто-сид при первом создании БД).
+По умолчанию (в т.ч. авто-сид при старте, см. app.py) создаются ТОЛЬКО
+необходимые учётные записи — администратор и оператор. Синтетические
+демо-данные (клиники, справочник услуг, цены) автоматически НЕ создаются:
+реальные данные появляются после загрузки прайсов, а справочник услуг
+импортируется через POST /api/catalog/import.
 
-Ручной запуск:  python seed_data.py          — досидить недостающее
-                python seed_data.py --reset   — пересоздать БД с нуля и засидить
+seed_all() идемпотентен (учётки добавляются только если таблица users пуста),
+поэтому его безопасно вызывать при каждом старте приложения.
+
+Ручной запуск:  python seed_data.py            — досоздать недостающие учётки
+                python seed_data.py --demo     — дополнительно засеять демо-данные
+                python seed_data.py --reset     — пересоздать БД с нуля (только учётки)
+                python seed_data.py --reset --demo  — чистая БД + демо-данные
 """
 from datetime import date, timedelta
 
@@ -15,17 +22,19 @@ from models import (
 )
 
 # ---------------------------------------------------------------------------
-# Учётные записи по умолчанию (email, ФИО, роль, пароль)
+# Необходимые учётные записи (email, ФИО, роль, пароль).
+# Только admin/operator: вход в систему идёт через POST /api/admin/login,
+# который принимает роли operator|admin, поэтому обычные user-аккаунты
+# залогиниться всё равно не могут и в сид не входят.
 # ---------------------------------------------------------------------------
 DEFAULT_USERS = [
     ('admin@medarchive.kz',    'Администратор системы',   Role.ADMIN,    'admin123'),
     ('operator@medarchive.kz', 'Оператор верификации',    Role.OPERATOR, 'operator123'),
-    ('user@medarchive.kz',     'Демо пользователь',       Role.USER,     'user123'),
-    ('aliya@medarchive.kz',    'Алия Нурлан',             Role.USER,     'user123'),
 ]
 
 # ---------------------------------------------------------------------------
-# Целевой справочник услуг: (название, категория, синонимы, базовая цена KZT)
+# Демо-справочник услуг: (название, категория, синонимы, базовая цена KZT).
+# Используется только при ручном засеве демо-данных (seed_demo / --demo).
 # ---------------------------------------------------------------------------
 SERVICES = [
     ('Общий анализ крови',           'лаборатория',  ['ОАК', 'клинический анализ крови'],            3500),
@@ -45,7 +54,8 @@ SERVICES = [
 ]
 
 # ---------------------------------------------------------------------------
-# Клиники-партнёры: (название, город, адрес, БИН, email, телефон, множитель цен)
+# Демо-клиники: (название, город, адрес, БИН, email, телефон, множитель цен).
+# Используются только при ручном засеве демо-данных (seed_demo / --demo).
 # ---------------------------------------------------------------------------
 PARTNERS = [
     ('Клиника «Альфа»',   'Алматы',    'пр. Достык 132',        '010140001234', 'info@alfa.kz',    '+7 727 350 1200', 1.00),
@@ -137,6 +147,27 @@ def _seed_partners_and_prices(services):
             db.session.flush()
             items_total += 1
 
+            # демонстрация конвертации валют (ТЗ 4.4): позиция в USD у первого
+            # партнёра — оригинал в долларах, цена пересчитана по курсу на дату
+            if p_idx == 0 and s_idx == 0:
+                from services import currency_service as fx
+                usd = 120
+                db.session.add(PriceItem(
+                    doc_id=doc.doc_id,
+                    partner_id=partner.partner_id,
+                    service_id=services['МРТ головного мозга'].service_id,
+                    service_name_raw='МРТ головного мозга (прайс в USD)',
+                    price_resident_kzt=fx.convert_to_kzt(usd, Currency.USD, eff),
+                    price_nonresident_kzt=fx.convert_to_kzt(round(usd * 1.2), Currency.USD, eff),
+                    price_original=usd,
+                    currency_original=Currency.USD,
+                    match_score=1.0,
+                    is_verified=True,
+                    effective_date=eff,
+                    is_active=True,
+                ))
+                items_total += 1
+
             # демонстрация версионирования: для первой услуги добавим историю
             if s_idx == 0:
                 db.session.add(PriceItemHistory(
@@ -173,20 +204,41 @@ def _seed_partners_and_prices(services):
 
 
 def seed_all():
-    """Идемпотентно наполнить БД. Возвращает словарь с количеством добавленного."""
+    """Идемпотентно создать ТОЛЬКО необходимые учётные записи (админ/оператор).
+
+    Демо-данные (клиники/услуги/цены) здесь НЕ создаются — это делает seed_demo().
+    """
     users = _seed_users()
+    db.session.commit()
+    if users:
+        print(f"[seed] users_added={users}")
+    return {'users_added': users}
+
+
+def _seed_exchange_rates():
+    """Базовые (фолбэк) курсы валют на старую дату — чтобы конвертация по дате
+    прайса работала офлайн. Реальные курсы НБ РК подтягиваются через
+    POST /api/rates/refresh. Идемпотентно (upsert)."""
+    from services import currency_service as fx
+    return fx.seed_fallback_rates()
+
+
+def seed_demo():
+    """Засеять синтетические демо-данные (справочник, клиники, цены) — по запросу.
+
+    Идемпотентно: блоки наполняются только если соответствующая таблица пуста.
+    """
+    rates = _seed_exchange_rates()           # курсы нужны до создания позиций в USD
     services = _seed_services()
     partners, items = _seed_partners_and_prices(services)
     db.session.commit()
-
     summary = {
-        'users_added': users,
         'services_total': len(services),
         'partners_added': partners,
         'price_items_added': items,
+        'exchange_rates_added': rates,
     }
-    if any([users, partners, items]):
-        print(f"[seed] {summary}")
+    print(f"[seed:demo] {summary}")
     return summary
 
 
@@ -201,6 +253,8 @@ if __name__ == '__main__':
             db.drop_all()
             db.create_all()
         seed_all()
-        print('[seed] done. Учётки по умолчанию:')
+        if '--demo' in sys.argv:
+            seed_demo()
+        print('[seed] done. Учётки:')
         for email, _n, role, pw in DEFAULT_USERS:
             print(f'   {role:8} {email}  /  {pw}')

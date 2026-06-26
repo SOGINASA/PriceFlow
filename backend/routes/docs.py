@@ -37,6 +37,7 @@ OPENAPI = {
         {'name': 'search', 'description': 'Полнотекстовый поиск'},
         {'name': 'review', 'description': 'Очереди верификации (операторы)'},
         {'name': 'dashboard', 'description': 'Метрики обработки'},
+        {'name': 'rates', 'description': 'Курсы валют для пересчёта цен на дату прайса'},
         {'name': 'admin', 'description': 'Аутентификация оператора'},
     ],
     'paths': {
@@ -163,6 +164,44 @@ OPENAPI = {
             'get': {'tags': ['dashboard'], 'summary': 'Метрики обработки и % нормализации',
                     'responses': _ok()}
         },
+        '/rates': {
+            'get': {
+                'tags': ['rates'],
+                'summary': 'Сохранённые курсы валют к KZT',
+                'parameters': [{'name': 'currency', 'in': 'query', 'schema': {'type': 'string', 'enum': ['USD', 'RUB']}}],
+                'responses': _ok('ExchangeRate', is_array=True),
+            },
+            'post': {
+                'tags': ['rates'],
+                'summary': 'Задать/обновить курс вручную',
+                'requestBody': {'content': {'application/json': {'schema': {'type': 'object', 'properties': {
+                    'currency': {'type': 'string', 'enum': ['USD', 'RUB']},
+                    'date': {'type': 'string', 'format': 'date'}, 'rate': {'type': 'number'}}}}}},
+                'responses': _ok(),
+            },
+        },
+        '/rates/refresh': {
+            'post': {
+                'tags': ['rates'],
+                'summary': 'Подтянуть курсы НБ РК на дату или диапазон',
+                'requestBody': {'content': {'application/json': {'schema': {'type': 'object', 'properties': {
+                    'date': {'type': 'string', 'format': 'date'},
+                    'start': {'type': 'string', 'format': 'date'}, 'end': {'type': 'string', 'format': 'date'}}}}}},
+                'responses': _ok(),
+            }
+        },
+        '/rates/convert': {
+            'get': {
+                'tags': ['rates'],
+                'summary': 'Превью пересчёта суммы в KZT по курсу на дату прайса',
+                'parameters': [
+                    {'name': 'amount', 'in': 'query', 'required': True, 'schema': {'type': 'number'}},
+                    {'name': 'currency', 'in': 'query', 'schema': {'type': 'string', 'enum': ['KZT', 'USD', 'RUB']}},
+                    {'name': 'date', 'in': 'query', 'schema': {'type': 'string', 'format': 'date'}},
+                ],
+                'responses': _ok(),
+            }
+        },
         '/admin/login': {
             'post': {
                 'tags': ['admin'],
@@ -195,9 +234,15 @@ OPENAPI = {
                 'item_id': {'type': 'string'}, 'doc_id': {'type': 'string'}, 'partner_id': {'type': 'string'},
                 'service_id': {'type': 'string'}, 'service_name_raw': {'type': 'string'},
                 'price_resident_kzt': {'type': 'number'}, 'price_nonresident_kzt': {'type': 'number'},
+                'price_original': {'type': 'number'},
                 'currency_original': {'type': 'string'}, 'match_score': {'type': 'number'},
                 'is_verified': {'type': 'boolean'}, 'has_anomaly': {'type': 'boolean'},
                 'is_active': {'type': 'boolean'}}},
+            'ExchangeRate': {'type': 'object', 'properties': {
+                'id': {'type': 'integer'}, 'currency': {'type': 'string', 'enum': ['USD', 'RUB']},
+                'date': {'type': 'string', 'format': 'date'}, 'rate': {'type': 'number'},
+                'source': {'type': 'string', 'enum': ['nbk', 'fallback', 'manual']},
+                'fetched_at': {'type': 'string'}}},
         }
     },
 }

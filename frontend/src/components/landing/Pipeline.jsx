@@ -1,14 +1,26 @@
 import useI18n from "../../i18n/useI18n";
 import { useReveal, revealStyle } from "../../hooks/useReveal";
+import { formatNumber } from "../../lib/format";
+
+const truncate = (s, n) => (s && s.length > n ? `${s.slice(0, n - 1)}…` : s || "");
 
 // ---------- Секция «Один пайплайн» ----------
-// Визуализация потока: входные файлы → AI-ядро → готовый отчёт. Соединительные
-// линии и «летящие» точки анимированы средствами SVG (как в оригинале).
-export default function Pipeline() {
+// Визуализация потока: входные файлы → AI-ядро → готовый отчёт. Выходной отчёт
+// заполняется реальными строками из первого отчёта (report), если он есть.
+export default function Pipeline({ report }) {
   const { t } = useI18n();
   const tr = t();
   const [headRef, headVis] = useReveal();
   const [diagRef, diagVis] = useReveal();
+
+  // Реальные строки выходного отчёта (топ-3 услуги по покрытию).
+  const ys = [135, 177, 219];
+  const outRows = (report?.rows || []).slice(0, 3).map((r, i) => ({
+    y: ys[i],
+    name: truncate(r.service, 18),
+    price: r.prices[r.best] != null ? `${formatNumber(r.prices[r.best])} ₸` : "—",
+    best: i === 0,
+  }));
 
   const paths = [
     "M250,118 C 380,118 440,205 520,222",
@@ -85,19 +97,18 @@ export default function Pipeline() {
             <text x="600" y="229" fontFamily="Sora" fontSize="20" fontWeight="700" fill="#fff" textAnchor="middle">AI</text>
             <text x="600" y="248" fontFamily="Manrope" fontSize="9" fontWeight="600" fill="rgba(255,255,255,.75)" textAnchor="middle" letterSpacing="1">MEDPARTNERS</text>
 
-            {/* Выходной отчёт */}
+            {/* Выходной отчёт (реальные строки, если есть данные) */}
             <rect x="940" y="75" width="250" height="320" rx="18" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.12)" />
-            {[
-              { y: 135, name: "МРТ · Альфа", price: "14 900 ₸", best: true },
-              { y: 177, name: "МРТ · Сити", price: "18 200 ₸", best: false },
-              { y: 219, name: "УЗИ · Здоровье+", price: "9 400 ₸", best: false },
-            ].map((r, i) => (
+            {outRows.map((r, i) => (
               <g key={i} fontFamily="Manrope" fontSize="11" fontWeight="600">
                 <rect x="962" y={r.y} width="206" height="34" rx="9" fill={r.best ? "rgba(110,139,255,.1)" : "rgba(255,255,255,.03)"} />
                 <text x="974" y={r.y + 21} fill={r.best ? "rgba(245,245,247,.85)" : "rgba(245,245,247,.6)"}>{r.name}</text>
                 <text x="1156" y={r.y + 21} fill={r.best ? "#5BE892" : "rgba(245,245,247,.75)"} textAnchor="end">{r.price}</text>
               </g>
             ))}
+            {outRows.length === 0 && (
+              <text x="1065" y="240" fontFamily="Manrope" fontSize="11" fontWeight="600" fill="rgba(245,245,247,.35)" textAnchor="middle">{tr.card.empty}</text>
+            )}
           </svg>
 
           {/* Шаги пайплайна */}

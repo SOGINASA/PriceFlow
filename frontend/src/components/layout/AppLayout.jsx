@@ -1,17 +1,28 @@
+import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Aurora from "../ui/Aurora";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import MobileNav from "./MobileNav";
 import ProfileSheet from "./ProfileSheet";
+import useUIStore from "../../store/useUIStore";
+import { buildNotifications } from "../../lib/notifications";
 
 // ---------- Каркас рабочей области ----------
 // Фиксированный сайдбар (десктоп) + липкий топбар + контент (Outlet) +
 // нижняя навигация на мобильных.
 export default function AppLayout() {
   const location = useLocation();
+  const setNotifications = useUIStore((s) => s.setNotifications);
   // Текущий экран = первый сегмент после /app
   const screen = location.pathname.split("/")[2] || "upload";
+
+  // Загружаем уведомления (бейдж колокольчика) из реальных данных бэкенда.
+  useEffect(() => {
+    let alive = true;
+    buildNotifications().then(({ items }) => { if (alive) setNotifications(items); });
+    return () => { alive = false; };
+  }, [setNotifications]);
 
   return (
     <div className="relative w-full min-h-screen bg-bg overflow-hidden">

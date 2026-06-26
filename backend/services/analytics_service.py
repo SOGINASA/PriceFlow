@@ -180,6 +180,27 @@ def list_anomalies(limit: int = 200):
     return {'count': len(out), 'anomalies': out}
 
 
+def partner_price_aggregates(partner_ids=None):
+    """Агрегаты прайса по клиникам для карточек: число позиций и минимальная цена.
+
+    Возвращает {partner_id: {'services_count': int, 'min_price_kzt': float|None}}
+    по актуальным позициям (is_active=True). partner_ids сужает выборку.
+    """
+    q = (db.session.query(
+            PriceItem.partner_id,
+            db.func.count(PriceItem.item_id),
+            db.func.min(PriceItem.price_resident_kzt))
+         .filter(PriceItem.is_active.is_(True)))
+    if partner_ids is not None:
+        ids = list(partner_ids)
+        if not ids:
+            return {}
+        q = q.filter(PriceItem.partner_id.in_(ids))
+    q = q.group_by(PriceItem.partner_id)
+    return {pid: {'services_count': cnt, 'min_price_kzt': _f(mn)}
+            for pid, cnt, mn in q.all()}
+
+
 def price_summary_for_service(service_id: str):
     """Краткая сводка для обогащения поиска (П.5): {min, max, clinics_count}."""
     prices = [
@@ -189,3 +210,157 @@ def price_summary_for_service(service_id: str):
     ]
     s = _stats(prices)
     return {'min': s['min'], 'max': s['max'], 'clinics_count': s['count']}
+
+
+# ---------------------------------------------------------------------------
+# Сводные отчёты (анализ цен по городу) — реальный результат обработки прайсов.
+# Отчёт строится «на лету» из актуальных позиций (is_active=True), сгруппированных
+# по городу клиники: матрица сравнения «услуга × клиника» + разброс цен.
+# ---------------------------------------------------------------------------
+
+def _report_dataset():
+    """Актуальные позиции вместе с клиникой и услугой справочника (один проход)."""
+    return (db.session.query(PriceItem, Partner, Service)
+            .join(Partner, Partner.partner_id == PriceItem.partner_id)
+            .outerjoin(Service, Service.service_id == PriceItem.service_id)
+            .filter(PriceItem.is_active.is_(True))
+            .all())
+
+
+def _savings_pct(svc_prices: dict) -> int:
+    """Средняя потенциальная экономия по услугам с ≥2 предложениями:
+    среднее по услугам от (max-min)/max. svc_prices = {service_id: [цены]}."""
+    ratios = []
+    for prices in svc_prices.values():
+        if len(prices) >= 2 and max(prices):
+            ratios.append((max(prices) - min(prices)) / max(prices))
+    return round(sum(ratios) / len(ratios) * 100) if ratios else 0
+
+
+def _city_of(partner) -> str:
+    return partner.city or 'Не указан'
+
+
+def list_reports():
+    """Список сводных отчётов — по одному на город, у которого есть цены.
+
+    Каждый отчёт агрегирует реальные показатели обработки прайсов города.
+    """
+    by_city = {}
+    for item, partner, _svc in _report_dataset():
+        city = _city_of(partner)
+        bucket = by_city.setdefault(city, {
+            'items': 0, 'partners': set(), 'docs': set(),
+            'svc_prices': {}, 'dates': [],
+        })
+        bucket['items'] += 1
+        bucket['partners'].add(partner.partner_id)
+        if item.doc_id:
+            bucket['docs'].add(item.doc_id)
+        if item.effective_date:
+            bucket['dates'].append(item.effective_date)
+        price = _f(item.price_resident_kzt)
+        if item.service_id and price is not None:
+            bucket['svc_prices'].setdefault(item.service_id, []).append(price)
+
+    reports = []
+    for city, b in by_city.items():
+        latest = max(b['dates']) if b['dates'] else None
+        reports.append({
+            'id': city,
+            'title': f'Единый отчёт · {city}',
+            'city': city,
+            'date': latest.isoformat() if latest else None,
+            'clinics': len(b['partners']),
+            'items': b['items'],
+            'files': len(b['docs']),
+            'savings': _savings_pct(b['svc_prices']),
+            'status': 'done',
+        })
+    reports.sort(key=lambda r: (r['date'] or ''), reverse=True)
+    return reports
+
+
+def build_report(report_id: str):
+    """Детальный сводный отчёт по городу: матрица сравнения цен + разброс.
+
+    Возвращает None, если по городу нет данных. report_id — название города.
+    """
+    target = (report_id or '').strip().lower()
+    data = [(i, p, s) for (i, p, s) in _report_dataset()
+            if _city_of(p).lower() == target]
+    if not data:
+        return None
+
+    city = _city_of(data[0][1])
+
+    # Колонки = клиники города (стабильный порядок по названию).
+    partners = {}
+    for _item, partner, _svc in data:
+        partners[partner.partner_id] = partner.name
+    columns = [{'key': pid, 'label': name}
+               for pid, name in sorted(partners.items(), key=lambda kv: kv[1])]
+
+    # Строки = услуги справочника; для каждой клиники берём минимальную цену.
+    services = {}
+    svc_prices = {}
+    for item, partner, svc in data:
+        price = _f(item.price_resident_kzt)
+        if not item.service_id or not svc or price is None:
+            continue
+        row = services.setdefault(item.service_id, {'service': svc.service_name, 'prices': {}})
+        cur = row['prices'].get(partner.partner_id)
+        if cur is None or price < cur:
+            row['prices'][partner.partner_id] = price
+        svc_prices.setdefault(item.service_id, []).append(price)
+
+    rows = []
+    for _sid, r in services.items():
+        prices = r['prices']
+        if not prices:
+            continue
+        best_pid = min(prices, key=prices.get)
+        rows.append({
+            'service': r['service'],
+            'prices': {pid: round(v) for pid, v in prices.items()},
+            'best': best_pid,
+            'coverage': len(prices),
+        })
+    # Сначала услуги, представленные в большем числе клиник (нагляднее сравнение).
+    rows.sort(key=lambda x: (-x['coverage'], x['service']))
+    rows = rows[:20]
+
+    # Разброс цен — для услуги с максимальным разбросом между клиниками города.
+    chart, chart_service, chart_stats = [], None, None
+    candidate = None
+    for sid, r in services.items():
+        vals = list(r['prices'].values())
+        if len(vals) >= 2 and min(vals):
+            spread = max(vals) / min(vals)
+            if candidate is None or spread > candidate[1]:
+                candidate = (sid, spread)
+    if candidate:
+        vals = sorted(services[candidate[0]]['prices'].values())
+        chart = [round(v) for v in vals]
+        chart_service = services[candidate[0]]['service']
+        chart_stats = _stats(vals)
+
+    latest = max((i.effective_date for i, _p, _s in data if i.effective_date), default=None)
+
+    return {
+        'id': city,
+        'title': f'Единый отчёт · {city}',
+        'city': city,
+        'date': latest.isoformat() if latest else None,
+        'summary': {
+            'items': len(data),
+            'clinics': len(partners),
+            'files': len({i.doc_id for i, _p, _s in data if i.doc_id}),
+            'savings': _savings_pct(svc_prices),
+        },
+        'columns': columns,
+        'rows': rows,
+        'chart': chart,
+        'chart_service': chart_service,
+        'chart_stats': chart_stats,
+    }

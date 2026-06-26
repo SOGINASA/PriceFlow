@@ -7,8 +7,22 @@ GET /api/partners/{id}/services   — полный прайс партнёра �
 from flask import Blueprint, request, jsonify
 
 from models import db, Partner, PriceItem, Service
+from services.analytics_service import partner_price_aggregates
 
 partners_bp = Blueprint('partners', __name__)
+
+
+def _with_aggregates(partners):
+    """Дополнить карточки клиник числом позиций и минимальной ценой («от X ₸»)."""
+    agg = partner_price_aggregates([p.partner_id for p in partners])
+    out = []
+    for p in partners:
+        d = p.to_dict()
+        a = agg.get(p.partner_id) or {}
+        d['services_count'] = a.get('services_count', 0)
+        d['min_price_kzt'] = a.get('min_price_kzt')
+        out.append(d)
+    return out
 
 
 @partners_bp.route('', methods=['GET'])
@@ -20,7 +34,7 @@ def list_partners():
     if request.args.get('is_active') in ('1', 'true'):
         q = q.filter_by(is_active=True)
     partners = q.order_by(Partner.name).limit(1000).all()
-    return jsonify([p.to_dict() for p in partners])
+    return jsonify(_with_aggregates(partners))
 
 
 @partners_bp.route('/<partner_id>', methods=['GET'])
@@ -28,7 +42,7 @@ def get_partner(partner_id):
     partner = db.session.get(Partner, partner_id)
     if not partner:
         return jsonify({'error': 'Партнёр не найден'}), 404
-    return jsonify(partner.to_dict())
+    return jsonify(_with_aggregates([partner])[0])
 
 
 @partners_bp.route('/<partner_id>/services', methods=['GET'])
