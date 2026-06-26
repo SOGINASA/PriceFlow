@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Logo from "../ui/Logo";
 import useAuthStore from "../../store/useAuthStore";
 import useUIStore from "../../store/useUIStore";
-import { NAV_ITEMS } from "./navItems";
+import { NAV_ITEMS, canSee } from "./navItems";
 
 // ---------- Боковая навигация (десктоп) ----------
 export default function Sidebar({ screen }) {
@@ -26,7 +26,7 @@ export default function Sidebar({ screen }) {
 
       {/* Пункты меню */}
       <nav className="flex flex-col gap-1">
-        {NAV_ITEMS.filter((item) => !item.adminOnly || role === "admin").map((item) => {
+        {NAV_ITEMS.filter((item) => canSee(item, role)).map((item) => {
           const active = screen === item.key;
           return (
             <Link
@@ -67,7 +67,7 @@ export default function Sidebar({ screen }) {
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-[13.5px] font-semibold truncate">{user?.name || "Гость"}</div>
-            <div className="text-[11.5px] text-ink/45">{role === "admin" ? "Администратор" : "Пользователь"}</div>
+            <div className="text-[11.5px] text-ink/45">{role === "admin" ? "Администратор" : role === "operator" ? "Оператор" : "Пользователь"}</div>
           </div>
           <button onClick={handleLogout} title="Выйти" className="grid place-items-center w-8 h-8 rounded-[9px] bg-white/5 border border-white/10 text-ink/60 transition-all hover:text-danger-soft hover:bg-danger/[.12]">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
