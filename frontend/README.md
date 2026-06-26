@@ -1,70 +1,61 @@
-# Getting Started with Create React App
+# MedPartners — Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Фронтенд системы автоматической обработки прайс-листов клиник-партнёров
+(хакатон MedPartners, кейс MedArchive). Реализован на **React (CRA) + Tailwind
+CSS + Zustand + React Router**.
 
-## Available Scripts
+## Запуск
 
-In the project directory, you can run:
+```bash
+npm install
+npm start          # дев-сервер на http://localhost:3000
+npm run build      # продакшн-сборка в build/
+```
 
-### `npm start`
+Для подключения бэкенда скопируйте `.env.example` → `.env.local` и укажите
+`REACT_APP_API_URL`.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Структура
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+```
+src/
+├── api/                 # слой доступа к REST API (эндпоинты из ТЗ, п.4.5)
+│   ├── client.js        #   базовый fetch-клиент (baseURL из env)
+│   └── index.js         #   services/partners/search/documents/matching
+├── components/
+│   ├── landing/         # секции лендинга (Hero, Pipeline, Features, …)
+│   ├── layout/          # каркас приложения (Sidebar, Topbar, MobileNav)
+│   ├── shared/          # переиспользуемое (ClinicSearch)
+│   └── ui/              # примитивы (Logo, Field, FileIcon, StatTile, Toast…)
+├── data/mock.js         # демо-данные (замещаются вызовами api/)
+├── hooks/               # useReveal (анимация появления), useCountUp
+├── i18n/                # переводы лендинга RU/KZ/EN + стор языка
+├── lib/                 # утилиты (cn, форматтеры цен/чисел/файлов)
+├── pages/
+│   ├── LandingPage.jsx  # публичная главная
+│   ├── auth/            # Login / Register / Biometric
+│   └── app/             # Upload → Analyzing → Report / Search / Partner / Admin
+└── store/               # Zustand: useAuthStore, useUploadStore
+```
 
-### `npm test`
+## Маршруты
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+| Путь | Экран |
+|------|-------|
+| `/` | Лендинг |
+| `/login`, `/register`, `/biometric` | Авторизация и биометрия |
+| `/app/upload` | Загрузка архива прайсов |
+| `/app/analyzing` | Прогресс обработки |
+| `/app/report` | Единый отчёт и сравнение цен |
+| `/app/search` | Поиск по клиникам |
+| `/app/partner/:id` | Карточка партнёра (прайс, контакты, дата) |
+| `/app/admin` | Аналитика (только роль admin) |
 
-### `npm run build`
+## Подключение бэкенда
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Вся работа с сервером инкапсулирована в [`src/api`](src/api). Методы 1:1
+повторяют эндпоинты ТЗ (`GET /services`, `GET /partners/{id}/services`,
+`GET /search`, `POST /documents/upload`, `GET /unmatched`, `POST /match` …).
+Сейчас страницы используют демо-данные из `src/data/mock.js` — чтобы перейти
+на реальный бэкенд, замените импорты mock-данных на соответствующие вызовы
+из `src/api`.
