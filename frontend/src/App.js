@@ -14,6 +14,8 @@ import PartnerPage from "./pages/app/PartnerPage";
 import AdminPage from "./pages/app/AdminPage";
 import NotificationsPage from "./pages/app/NotificationsPage";
 import VerificationPage from "./pages/app/VerificationPage";
+import MyPricesPage from "./pages/app/MyPricesPage";
+import MyClinicPage from "./pages/app/MyClinicPage";
 
 // ---------- Карта маршрутов приложения ----------
 // Публичные: лендинг и экраны авторизации.
@@ -34,6 +36,8 @@ export default function App() {
         <Route path="report" element={<ReportsListPage />} />
         <Route path="report/:id" element={<ReportDetailPage />} />
         <Route path="search" element={<SearchPage />} />
+        <Route path="my-prices" element={<MyPricesPage />} />
+        <Route path="my-clinic" element={<MyClinicPage />} />
         <Route path="verification" element={<VerificationPage />} />
         <Route path="partner/:id" element={<PartnerPage />} />
         <Route path="notifications" element={<NotificationsPage />} />

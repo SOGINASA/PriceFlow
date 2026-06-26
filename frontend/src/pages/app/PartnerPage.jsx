@@ -31,6 +31,7 @@ export default function PartnerPage() {
   const [effectiveDate, setEffectiveDate] = useState(null);
   const [error, setError] = useState(false);
 
+  // Загрузка: сначала бэкенд (видно всем), иначе локальный фолбэк.
   useEffect(() => {
     let alive = true;
     setClinic(null);
@@ -38,13 +39,10 @@ export default function PartnerPage() {
     setError(false);
     (async () => {
       try {
-        const [partner, priceList] = await Promise.all([
-          partnersApi.get(id),
-          partnersApi.services(id),
-        ]);
+        const [partner, price] = await Promise.all([partnersApi.get(id), partnersApi.services(id)]);
         if (!alive) return;
         setClinic(toClinicCard(partner));
-        const items = (priceList?.items || []).map((it) => ({
+        const items = (price?.items || []).map((it) => ({
           service: it.service_name || it.service_name_raw,
           resident: fmt(it.price_resident_kzt),
           nonResident: fmt(it.price_nonresident_kzt),
@@ -64,10 +62,10 @@ export default function PartnerPage() {
 
   return (
     <section className="flex flex-col gap-5 animate-fade-up">
-      {/* Назад к поиску */}
-      <button onClick={() => navigate("/app/search")} className="inline-flex items-center gap-2 self-start text-[13.5px] font-semibold text-ink/60 transition-colors hover:text-ink">
+      {/* Назад */}
+      <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 self-start text-[13.5px] font-semibold text-ink/60 transition-colors hover:text-ink">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-        К поиску клиник
+        Назад
       </button>
 
       {error ? (

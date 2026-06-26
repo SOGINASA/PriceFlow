@@ -13,7 +13,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Реальный вход оператора/администратора через бэкенд (POST /api/admin/login).
+  // Вход по email/паролю через бэкенд (POST /api/admin/login).
+  // Доступен операторам, админам и партнёрам (клиникам). Маршрут зависит от роли.
   const handleLogin = async () => {
     if (busy) return;
     setError("");
@@ -25,9 +26,16 @@ export default function LoginPage() {
         user: { name: res.user?.full_name || email, email },
         role,
         token: res.access_token,
+        partnerId: res.user?.partner_id || null,
       });
-      // Оператор → очередь верификации, админ → аналитика платформы.
-      navigate(role === "operator" ? "/app/verification" : "/app/admin");
+      // Партнёр → его кабинет; оператор → очередь верификации; админ → аналитика платформы.
+      navigate(
+        role === "partner"
+          ? "/app/my-prices"
+          : role === "operator"
+          ? "/app/verification"
+          : "/app/admin"
+      );
     } catch (e) {
       setError("Неверный email или пароль");
     } finally {

@@ -11,17 +11,22 @@ const useAuthStore = create(
   persist(
     (set) => ({
       user: null, // { name, email }
-      role: "user", // "user" | "operator" | "admin"
+      role: "user", // "user" | "operator" | "admin" | "partner"
       token: null, // JWT с бэкенда (см. POST /api/admin/login)
+      partnerId: null, // id клиники, если вошли как партнёр
       isAuthenticated: false,
 
       // Реальная сессия после входа через API.
-      setSession: ({ user, role = "user", token = null }) =>
-        set({ user, role, token, isAuthenticated: true }),
+      setSession: ({ user, role = "user", token = null, partnerId = null }) =>
+        set({ user, role, token, partnerId, isAuthenticated: true }),
 
       setRole: (role) => set({ role }),
 
-      logout: () => set({ user: null, isAuthenticated: false, role: "user", token: null }),
+      // Вход/переключение в роль партнёра (демо): привязываем к клинике.
+      enterPartner: ({ partnerId, name }) =>
+        set({ role: "partner", partnerId, user: { name, email: "" }, isAuthenticated: true }),
+
+      logout: () => set({ user: null, isAuthenticated: false, role: "user", token: null, partnerId: null }),
     }),
     { name: "medpartners-auth" }
   )

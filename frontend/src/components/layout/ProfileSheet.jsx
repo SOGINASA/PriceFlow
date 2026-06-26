@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import useUIStore from "../../store/useUIStore";
 import useAuthStore from "../../store/useAuthStore";
+import { CLINICS } from "../../data/mock";
+import { adminApi } from "../../api";
 
 // ---------- Профиль (нижний шит, мобайл) ----------
 // Открывается из нижней навигации/хедера. Содержит профиль, переключатель
@@ -8,11 +10,29 @@ import useAuthStore from "../../store/useAuthStore";
 export default function ProfileSheet() {
   const navigate = useNavigate();
   const { profileOpen, closeProfile } = useUIStore();
-  const { user, role, setRole, logout } = useAuthStore();
+  const { user, role, partnerId, setRole, enterPartner, setSession, logout } = useAuthStore();
 
   const go = (path) => {
     closeProfile();
     navigate(path);
+  };
+
+  // Переключение роли (демо). Партнёр → реальный вход в бэкенд, иначе фолбэк.
+  const changeRole = async (next) => {
+    if (next === "partner") {
+      try {
+        const res = await adminApi.login({ username: "partner@alfa.kz", password: "partner123" });
+        setSession({ user: { name: res.user?.full_name || "Партнёр", email: "partner@alfa.kz" }, role: "partner", token: res.access_token, partnerId: res.user?.partner_id || null });
+      } catch {
+        const cid = partnerId || "alpha";
+        const clinic = CLINICS.find((c) => c.id === cid);
+        enterPartner({ partnerId: cid, name: clinic?.name || "Клиника" });
+      }
+      go("/app/my-prices");
+      return;
+    }
+    setRole(next);
+    if (role === "partner") go("/app/upload");
   };
 
   const handleLogout = () => {
@@ -55,13 +75,13 @@ export default function ProfileSheet() {
         <div className="mb-4">
           <div className="text-[12px] font-semibold text-ink/45 mb-2">Режим</div>
           <div className="flex gap-[3px] p-[3px] rounded-[13px] bg-white/5 border border-white/[0.08]">
-            {[["user", "Пользователь"], ["admin", "Администратор"]].map(([key, label]) => {
+            {[["user", "Польз."], ["partner", "Партнёр"], ["admin", "Админ"]].map(([key, label]) => {
               const on = role === key;
               return (
                 <button
                   key={key}
-                  onClick={() => setRole(key)}
-                  className={`flex-1 py-[10px] rounded-[10px] text-[13.5px] font-semibold transition-all ${on ? "bg-primary/90 text-white" : "bg-transparent text-ink/55"}`}
+                  onClick={() => changeRole(key)}
+                  className={`flex-1 py-[10px] rounded-[10px] text-[13px] font-semibold transition-all ${on ? "bg-primary/90 text-white" : "bg-transparent text-ink/55"}`}
                 >
                   {label}
                 </button>
@@ -74,6 +94,12 @@ export default function ProfileSheet() {
         <div className="flex flex-col gap-[2px]">
           {role === "admin" && (
             <SheetRow onClick={() => go("/app/admin")} label="Аналитика платформы" icon={<path d="M3 13h4l2-6 3 12 2.5-8 1.5 4h5" />} />
+          )}
+          {role === "partner" && (
+            <>
+              <SheetRow onClick={() => go("/app/my-prices")} label="Мой прайс" icon={<><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 11h6M9 15h4" /></>} />
+              <SheetRow onClick={() => go("/app/my-clinic")} label="Моя клиника" icon={<><path d="M4 21V8l8-4 8 4v13" /><path d="M9 21v-6h6v6" /></>} />
+            </>
           )}
           <SheetRow onClick={() => go("/app/notifications")} label="Уведомления" icon={<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></>} />
           <SheetRow onClick={() => go("/")} label="На сайт" icon={<><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></>} />

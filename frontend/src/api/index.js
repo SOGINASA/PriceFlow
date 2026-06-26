@@ -26,6 +26,29 @@ export const partnersApi = {
   services: (partnerId) => api.get(`/partners/${partnerId}/services`),
 };
 
+// --- Кабинет партнёра (роль partner, требует JWT) ---
+// Бэкенд хранит данные в БД, при изменении цены прежняя уходит в
+// PriceItemHistory (история цен по датам — видна всем, ТЗ 4.4 / 5).
+export const meApi = {
+  // GET /me — текущий пользователь + его клиника
+  get: () => api.get("/me"),
+  // PATCH /me/clinic — обновить профиль своей клиники
+  updateClinic: (payload) => api.patch("/me/clinic", payload),
+  // GET /me/items — прайс своей клиники (с историей цен)
+  items: () => api.get("/me/items"),
+  // POST /me/items — добавить услугу/препарат
+  addItem: (payload) => api.post("/me/items", payload),
+  // PATCH /me/items/{itemId} — изменить цену/название (старая цена → в историю)
+  updateItem: (itemId, payload) => api.patch(`/me/items/${itemId}`, payload),
+  // DELETE /me/items/{itemId} — убрать позицию
+  removeItem: (itemId) => api.delete(`/me/items/${itemId}`),
+};
+
+// --- Публичная история цен позиции (без авторизации, видна всем) ---
+export const priceItemsApi = {
+  history: (itemId) => api.get(`/price-items/${itemId}/history`),
+};
+
 // --- Поиск ---
 export const searchApi = {
   // GET /search?q= — полнотекстовый поиск по услугам и партнёрам

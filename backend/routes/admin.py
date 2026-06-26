@@ -38,7 +38,7 @@ def login():
     password = (data.get('password') or '').strip()
 
     user = User.query.filter(db.func.lower(User.email) == login_id).first()
-    if user and user.is_active and user.role in (Role.OPERATOR, Role.ADMIN) and user.check_password(password):
+    if user and user.is_active and user.role in (Role.OPERATOR, Role.ADMIN, Role.PARTNER) and user.check_password(password):
         user.last_login = datetime.now(timezone.utc)
         db.session.commit()
         token = create_access_token(identity=user.email, additional_claims={'role': user.role})

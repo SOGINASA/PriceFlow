@@ -1,15 +1,16 @@
 import { Link } from "react-router-dom";
 import useAuthStore from "../../store/useAuthStore";
 import useUIStore from "../../store/useUIStore";
-import { MOBILE_NAV } from "./mobileNavItems";
+import { getMobileNav } from "./mobileNavItems";
 
 // ---------- Нижняя навигация (мобайл) ----------
 // Минималистичная «плавающая» панель в духе нативных приложений: активная
 // вкладка — залитая иконка с акцентом и короткой подписью; профиль открывает
-// нижний шит. Учитывает safe-area (чёлка/домашний индикатор).
+// нижний шит. Набор вкладок зависит от роли. Учитывает safe-area.
 export default function MobileNav({ screen }) {
-  const { user } = useAuthStore();
+  const { user, role } = useAuthStore();
   const { openProfile, profileOpen, unreadCount } = useUIStore();
+  const items = getMobileNav(role);
 
   // Общий рендер одной вкладки-ссылки.
   const Tab = ({ item }) => {
@@ -46,7 +47,7 @@ export default function MobileNav({ screen }) {
       className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-stretch px-2 pt-[6px] border-t border-white/[0.08] bg-[rgba(11,11,17,0.82)] backdrop-blur-[24px]"
       style={{ paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}
     >
-      {MOBILE_NAV.map((item) => (
+      {items.map((item) => (
         <Tab key={item.key} item={item} />
       ))}
 
