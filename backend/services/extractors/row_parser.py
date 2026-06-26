@@ -11,9 +11,12 @@ from services.extractors import RawRow
 # ключевые слова для распознавания колонок
 _NAME_KEYS = ('услуга', 'наименование', 'название', 'service', 'процедура', 'анализ')
 _PRICE_KEYS = ('цена', 'стоимость', 'тариф', 'price', 'сум', 'тенге', 'kzt')
-_RESIDENT_KEYS = ('резидент',)
+# Резидент: «для резидентов», а также «для граждан Республики Казахстан».
+_RESIDENT_KEYS = ('резидент', 'граждан')
+# Нерезидент проверяется ПЕРВЫМ, иначе «для иностранных граждан» уйдёт в резиденты.
 _NONRESIDENT_KEYS = ('нерезидент', 'не резидент', 'non-resident', 'иностран')
-_CODE_KEYS = ('код', 'code', 'артикул', 'шифр')
+_CODE_KEYS = ('код', 'code', 'артикул', 'шифр', 'мкб', 'тарификатор')
+_INDEX_KEYS = ('№', 'n п/п', 'п/п', '№п/п')   # колонка-нумератор (1..N) — не цена
 _PRICE_RE = re.compile(r'\d[\d\s.,]*')
 
 # --- Распознавание валюты позиции (ТЗ 3.3 / 4.4) ---------------------------
@@ -84,37 +87,118 @@ def looks_like_header(cells: List[str]) -> bool:
     return any(k in joined for k in _NAME_KEYS) and any(k in joined for k in _PRICE_KEYS)
 
 
-def classify_columns(rows: List[list]):
-    """Найти строку заголовков и сопоставить индексы колонок.
+_EMPTY_MAP = {'name': None, 'price_resident': None, 'price_nonresident': None, 'code': None}
 
-    Возвращает (header_index, {'name','price_resident','price_nonresident','code'}).
+
+_MIN_PRICE_MEDIAN = 100   # медиана колонки-цены ≥ 100 ₸ → отсекает «№ п/п», кол-во, ед.изм.
+
+
+def _median(vals):
+    s = sorted(vals)
+    return s[len(s) // 2] if s else 0
+
+
+def _detect_price_columns(rows, start, exclude, sample=60):
+    """Определить ценовые колонки ПО СОДЕРЖИМОМУ (надёжнее спан-заголовков Excel).
+
+    Колонка — ценовая, если в большинстве строк-данных это число-цена И медиана
+    значений ≥ _MIN_PRICE_MEDIAN (так колонка-нумератор «1,2,3…» и количества
+    не принимаются за цену). exclude — заведомо не-ценовые колонки (name/code/№).
     """
-    for idx, row in enumerate(rows[:15]):  # заголовок обычно в первых строках
-        cells = [str(c).lower() if c is not None else '' for c in row]
-        joined = ' '.join(cells)
-        if not (any(k in joined for k in _NAME_KEYS) and any(k in joined for k in _PRICE_KEYS)):
+    counts, values, total = {}, {}, 0
+    for r in rows[start:start + sample]:
+        if not any(c is not None and str(c).strip() for c in r):
             continue
-        col_map = {'name': None, 'price_resident': None, 'price_nonresident': None, 'code': None}
-        price_cols = []
-        for i, c in enumerate(cells):
-            if col_map['name'] is None and any(k in c for k in _NAME_KEYS):
-                col_map['name'] = i
-            elif any(k in c for k in _CODE_KEYS):
-                col_map['code'] = i
-            elif any(k in c for k in _PRICE_KEYS) or any(k in c for k in _RESIDENT_KEYS + _NONRESIDENT_KEYS):
-                if any(k in c for k in _NONRESIDENT_KEYS):
-                    col_map['price_nonresident'] = i
-                elif any(k in c for k in _RESIDENT_KEYS):
-                    col_map['price_resident'] = i
-                else:
-                    price_cols.append(i)
-        # одиночная колонка цены → резидентская
-        if col_map['price_resident'] is None and price_cols:
-            col_map['price_resident'] = price_cols[0]
-            if col_map['price_nonresident'] is None and len(price_cols) > 1:
-                col_map['price_nonresident'] = price_cols[1]
-        return idx, col_map
-    return 0, {'name': None, 'price_resident': None, 'price_nonresident': None, 'code': None}
+        total += 1
+        for i, c in enumerate(r):
+            if i in exclude or c is None or not looks_like_price(c):
+                continue
+            counts[i] = counts.get(i, 0) + 1
+            values.setdefault(i, []).append(to_number(c) or 0)
+    if not total:
+        return []
+    return sorted(i for i, n in counts.items()
+                  if n / total >= 0.5 and _median(values[i]) >= _MIN_PRICE_MEDIAN)
+
+
+def classify_columns(rows: List[list]):
+    """Найти строку(и) заголовков и сопоставить индексы колонок.
+
+    Устойчиво к: длинным преамбулам (заголовок не в первых строках), двухстрочным
+    шапкам и ценовым колонкам без слова «цена» («для граждан РК» → резидент,
+    определяется и по содержимому). Возвращает (header_index, col_map), где
+    данные = rows[header_index + 1:].
+    """
+    # 1) строка-заголовок = первая (до 40) со словом-названием услуги И ≥2 колонками
+    #    (≥2 непустых ячеек — чтобы не принять однострочный заголовок-титул
+    #    «ПРЕЙСКУРАНТ цен на медицинские услуги» за шапку таблицы).
+    header_row = None
+    for idx, row in enumerate(rows[:40]):
+        cells = [str(c).lower() if c is not None else '' for c in row]
+        non_empty = [c for c in cells if c.strip()]
+        if len(non_empty) >= 2 and any(any(k in c for k in _NAME_KEYS) for c in cells):
+            header_row = idx
+            break
+    if header_row is None:
+        return 0, dict(_EMPTY_MAP)
+
+    # 2) объединяем шапку из текущей и следующей строки (многоуровневые заголовки)
+    def low(row):
+        return [str(c).lower() if c is not None else '' for c in row]
+    h1 = low(rows[header_row])
+    h2 = low(rows[header_row + 1]) if header_row + 1 < len(rows) else []
+    width = max(len(h1), len(h2))
+    merged = [((h1[i] if i < len(h1) else '') + ' ' + (h2[i] if i < len(h2) else '')).strip()
+              for i in range(width)]
+
+    col_map = dict(_EMPTY_MAP)
+    exclude = set()
+    res_hint, nonres_hint = set(), set()    # колонки, чья шапка намекает на резидент/нерезидент
+    for i, c in enumerate(merged):
+        if not c:
+            continue
+        if any(k in c for k in _INDEX_KEYS):
+            exclude.add(i)                       # колонка «№ п/п» — не цена
+        if col_map['name'] is None and any(k in c for k in _NAME_KEYS):
+            col_map['name'] = i
+        elif col_map['code'] is None and any(k in c for k in _CODE_KEYS):
+            col_map['code'] = i
+        # независимо (не elif): колонка с обоими ключами («граждан РК … а также
+        # иностранцев») попадёт в оба множества → станет неоднозначной → резидент.
+        if any(k in c for k in _NONRESIDENT_KEYS):
+            nonres_hint.add(i)
+        if any(k in c for k in _RESIDENT_KEYS):
+            res_hint.add(i)
+
+    # 3) начало данных: первая строка после шапки с текстом в колонке имени и числом
+    data_start = header_row + 1
+    name_i = col_map['name']
+    for j in range(header_row + 1, min(header_row + 8, len(rows))):
+        r = rows[j]
+        nm = r[name_i] if (name_i is not None and name_i < len(r)) else None
+        has_num = any(c is not None and looks_like_price(c) for k, c in enumerate(r) if k != name_i)
+        if nm and str(nm).strip() and not str(nm).strip().replace('.', '').isdigit() and has_num:
+            data_start = j
+            break
+
+    # 4) ценовые колонки — ПО СОДЕРЖИМОМУ (надёжнее спан-заголовков Excel),
+    #    порядок резидент/нерезидент — по подсказкам шапки, иначе слева направо.
+    exclude |= {col_map['name'], col_map['code']}
+    exclude.discard(None)
+    price_cols = _detect_price_columns(rows, data_start, exclude)
+    # подсказку шапки засчитываем только если она ОДНОЗНАЧНА: «для граждан РК … а
+    # также иностранцев» — одна цена для всех, содержит оба ключа → не подсказка.
+    res_col = next((c for c in price_cols if c in res_hint and c not in nonres_hint), None)
+    nonres_col = next((c for c in price_cols if c in nonres_hint and c not in res_hint), None)
+    rest = [c for c in price_cols if c not in (res_col, nonres_col)]
+    if res_col is None and rest:        # единственная/левая цена → резидентская
+        res_col = rest.pop(0)
+    if nonres_col is None and rest:
+        nonres_col = rest.pop(0)
+    col_map['price_resident'] = res_col
+    col_map['price_nonresident'] = nonres_col
+
+    return data_start - 1, col_map
 
 
 def parse_table_row(cells: List[str]) -> Optional[RawRow]:

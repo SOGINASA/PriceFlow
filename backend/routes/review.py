@@ -5,15 +5,38 @@ GET  /api/needs-review     — позиции с аномалиями / доку
 POST /api/match            — ручное сопоставление позиции с услугой справочника
 POST /api/verify           — подтвердить/отклонить/скорректировать позицию
 """
-from flask import Blueprint, request, jsonify
+from functools import wraps
 
-from models import db, PriceItem, Service, PriceDocument
-from services.normalization_service import match_service
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import verify_jwt_in_request, get_jwt, get_jwt_identity
+
+from models import db, PriceItem, Service, PriceDocument, Role
+from services.normalization_service import match_service, learn_synonym, MANUAL
 
 review_bp = Blueprint('review', __name__)
 
 
+def operator_required(fn):
+    """Очереди верификации и матчинг доступны только оператору/админу (ТЗ 4.6).
+
+    Без этого любой мог бы менять привязки и «отравлять» обучаемые синонимы
+    через неаутентифицированный /match."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        verify_jwt_in_request()
+        if get_jwt().get('role') not in (Role.OPERATOR, Role.ADMIN):
+            return jsonify({'error': 'Требуется роль оператора'}), 403
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def _current_user_id():
+    """Идентификатор оператора из JWT (токен уже проверен operator_required)."""
+    return get_jwt_identity()
+
+
 @review_bp.route('/unmatched', methods=['GET'])
+@operator_required
 def unmatched():
     """Позиции без привязки к справочнику + топ-подсказка из match_service."""
     items = (PriceItem.query
@@ -21,17 +44,18 @@ def unmatched():
              .limit(500).all())
     out = []
     for it in items:
-        suggestion, score = match_service(it.service_name_raw)
+        suggestion, score, method = match_service(it.service_name_raw)
         d = it.to_dict()
         d['suggestion'] = (
             {'service_id': suggestion.service_id, 'service_name': suggestion.service_name,
-             'score': round(score, 3)} if suggestion else None
+             'score': round(score, 3), 'method': method} if suggestion else None
         )
         out.append(d)
     return jsonify(out)
 
 
 @review_bp.route('/needs-review', methods=['GET'])
+@operator_required
 def needs_review():
     items = (PriceItem.query
              .filter(PriceItem.has_anomaly.is_(True), PriceItem.is_active.is_(True))
@@ -40,6 +64,7 @@ def needs_review():
 
 
 @review_bp.route('/match', methods=['POST'])
+@operator_required
 def match():
     """Ручное сопоставление: {item_id, service_id} или создать новую услугу."""
     data = request.get_json() or {}
@@ -48,24 +73,35 @@ def match():
         return jsonify({'error': 'Позиция не найдена'}), 404
 
     service_id = data.get('service_id')
+    source = 'operator_match'
     if not service_id and data.get('new_service_name'):
         svc = Service(service_name=data['new_service_name'].strip(),
                       category=data.get('category'), synonyms=[])
         db.session.add(svc)
         db.session.flush()
         service_id = svc.service_id
-    if not service_id or not db.session.get(Service, service_id):
+        source = 'new_service'
+    svc = db.session.get(Service, service_id) if service_id else None
+    if not svc:
         return jsonify({'error': 'Укажите существующий service_id или new_service_name'}), 400
 
     item.service_id = service_id
     item.is_verified = True
     item.match_score = 1.0
+    item.match_method = MANUAL
     item.verification_note = data.get('note')
+
+    # Дообучение (ТЗ 4.3): запоминаем сырое название как синоним услуги, чтобы
+    # следующая такая же позиция сопоставилась автоматически.
+    learned = learn_synonym(svc, item.service_name_raw, source=source,
+                            created_by=_current_user_id())
+
     db.session.commit()
-    return jsonify(item.to_dict())
+    return jsonify({**item.to_dict(), 'learned_synonym': learned})
 
 
 @review_bp.route('/verify', methods=['POST'])
+@operator_required
 def verify():
     """Подтвердить/отклонить/скорректировать позицию (ТЗ 4.4).
 

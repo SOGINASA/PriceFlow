@@ -33,7 +33,10 @@ Pillow==11.0.0
 
 # === Normalization / fuzzy matching (TZ 4.3) ===
 rapidfuzz==3.10.1
-# sentence-transformers==3.3.1  # optional: semantic matching via embeddings
+# Дообучение, уровень 2 — семантический матчинг по эмбеддингам (ВКЛ по умолчанию,
+# SEMANTIC_MATCH_ENABLED=true). Тянет модель ~120 МБ на первом запуске; работает на
+# CPU. Отключается флагом SEMANTIC_MATCH_ENABLED=false для слабого железа.
+sentence-transformers==3.3.1
 
 # === External HTTP (optional cloud OCR / LLM) ===
 requests==2.32.5

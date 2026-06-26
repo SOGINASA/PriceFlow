@@ -230,6 +230,7 @@ class PriceItem(db.Model):
 
     # нормализация / верификация
     match_score = db.Column(db.Float)                    # уверенность автосопоставления
+    match_method = db.Column(db.String(20))              # exact / fuzzy / semantic / manual (как сопоставлено)
     is_verified = db.Column(db.Boolean, default=False)
     verification_note = db.Column(db.String(1000))
 
@@ -253,6 +254,7 @@ class PriceItem(db.Model):
             'price_original': float(self.price_original) if self.price_original is not None else None,
             'currency_original': self.currency_original,
             'match_score': self.match_score,
+            'match_method': self.match_method,
             'is_verified': self.is_verified,
             'verification_note': self.verification_note,
             'effective_date': _iso(self.effective_date),
@@ -326,4 +328,37 @@ class PriceItemHistory(db.Model):
             'effective_date': _iso(self.effective_date),
             'archived_at': _iso(self.archived_at),
             'reason': self.reason,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Дообучение нормализации: синонимы, выученные на правках оператора (ТЗ 4.3).
+# Когда оператор вручную сопоставляет позицию со справочником, её сырое название
+# становится синонимом услуги — следующий такой же текст сопоставится автоматически
+# (exact-match). Эта таблица — аудит/метрика обучения (кто, когда, из какого источника).
+# ---------------------------------------------------------------------------
+class LearnedSynonym(db.Model):
+    __tablename__ = 'learned_synonyms'
+
+    id = db.Column(db.Integer, primary_key=True)
+    service_id = db.Column(db.String(36), db.ForeignKey('services.service_id'), index=True)
+    raw_name = db.Column(db.String(1000), nullable=False)    # как было в документе
+    normalized = db.Column(db.String(1000), index=True)      # ключ нормализации (lower/collapsed)
+    source = db.Column(db.String(30), default='operator_match')  # operator_match / new_service
+    created_by = db.Column(db.String(120))                   # email/идентификатор оператора (опц.)
+    created_at = db.Column(db.DateTime, default=_utc_now)
+
+    __table_args__ = (
+        db.UniqueConstraint('service_id', 'normalized', name='uq_learned_service_norm'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'service_id': self.service_id,
+            'raw_name': self.raw_name,
+            'normalized': self.normalized,
+            'source': self.source,
+            'created_by': self.created_by,
+            'created_at': _iso(self.created_at),
         }

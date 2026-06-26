@@ -26,6 +26,7 @@ def _ensure_columns():
     wanted = [
         ('users', 'partner_id', 'VARCHAR(36)'),
         ('partners', 'description', 'VARCHAR(1000)'),
+        ('price_items', 'match_method', 'VARCHAR(20)'),
     ]
     for table, column, ddl in wanted:
         if table not in tables:

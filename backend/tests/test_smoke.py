@@ -36,15 +36,81 @@ def test_normalization_matches_synonym(client):
     from services.normalization_service import match_service
     db.session.add(Service(service_name='Общий анализ крови', synonyms=['ОАК']))
     db.session.commit()
-    svc, score = match_service('ОАК')
+    svc, score, method = match_service('ОАК')
     assert svc is not None
     assert score == 1.0
+    assert method == 'exact'
+
+
+def test_learning_loop_adds_synonym(client):
+    """Дообучение: после ручного /match сырое имя становится синонимом и
+    следующая такая же позиция сопоставляется автоматически (exact)."""
+    from services.normalization_service import match_service, learn_synonym, _build_index
+    from models import LearnedSynonym
+    svc = Service(service_name='Магнитно-резонансная томография', synonyms=[])
+    db.session.add(svc)
+    db.session.commit()
+
+    raw = 'МРТ головного мозга с контрастом'
+    # до обучения — точного совпадения нет
+    _, score_before, _ = match_service(raw)
+    assert score_before < 1.0
+
+    learned = learn_synonym(svc, raw, source='operator_match', created_by='op@test')
+    db.session.commit()
+    assert learned is True
+    assert LearnedSynonym.query.filter_by(service_id=svc.service_id).count() == 1
+
+    # после обучения — exact-match по свежему индексу
+    matched, score_after, method = match_service(raw, index=_build_index())
+    assert matched is not None and matched.service_id == svc.service_id
+    assert score_after == 1.0 and method == 'exact'
+
+    # идемпотентность: повторное обучение тем же текстом — не дубль
+    assert learn_synonym(svc, raw) is False
 
 
 def test_dashboard_stats(client):
     resp = client.get('/api/dashboard/stats')
     assert resp.status_code == 200
     assert 'normalization_rate_pct' in resp.get_json()['items']
+
+
+def test_review_endpoints_require_auth(client):
+    """Очереди/матчинг закрыты: без JWT — 401, чужая роль — 403."""
+    assert client.get('/api/unmatched').status_code in (401, 422)
+    assert client.get('/api/needs-review').status_code in (401, 422)
+    assert client.post('/api/match', json={'item_id': 'x'}).status_code in (401, 422)
+    assert client.post('/api/verify', json={'item_id': 'x'}).status_code in (401, 422)
+
+    from flask_jwt_extended import create_access_token
+    from models import Role
+    # роль user — недостаточно (403)
+    tok_user = create_access_token(identity='u@test', additional_claims={'role': Role.USER})
+    r = client.get('/api/unmatched', headers={'Authorization': f'Bearer {tok_user}'})
+    assert r.status_code == 403
+
+
+def test_match_with_operator_token_and_learns(client):
+    """Оператор с токеном сопоставляет позицию и дообучает синоним."""
+    from flask_jwt_extended import create_access_token
+    from models import Role
+    svc = Service(service_name='Тестовая услуга', synonyms=[])
+    p = Partner(name='Клиника Т')
+    db.session.add_all([svc, p])
+    db.session.flush()
+    it = PriceItem(partner_id=p.partner_id, service_name_raw='сырое имя услуги', is_active=True)
+    db.session.add(it)
+    db.session.commit()
+
+    tok = create_access_token(identity='op@test', additional_claims={'role': Role.OPERATOR})
+    r = client.post('/api/match',
+                    json={'item_id': it.item_id, 'service_id': svc.service_id},
+                    headers={'Authorization': f'Bearer {tok}'})
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body['match_method'] == 'manual'
+    assert body['learned_synonym'] is True
 
 
 def _seed_service_with_offers(prices_by_city):

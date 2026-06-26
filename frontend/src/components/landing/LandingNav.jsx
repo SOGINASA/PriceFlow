@@ -61,6 +61,13 @@ export default function LandingNav() {
           >
             {tr.nav.start}
           </Link>
+          {/* Мобильный вход: на телефонах десктоп-ссылки/CTA скрыты */}
+          <Link
+            to="/login"
+            className="sm:hidden inline-flex text-[13px] font-semibold px-[13px] py-[9px] rounded-[10px] bg-ink text-bg"
+          >
+            {tr.nav.signin}
+          </Link>
         </div>
       </div>
     </nav>

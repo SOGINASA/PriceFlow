@@ -11,6 +11,9 @@ import { useToast } from "../../components/ui/Toast";
 const fmt = (v) =>
   v == null ? "—" : Math.round(v).toLocaleString("ru-RU").replace(/,/g, " ");
 
+// Как получена подсказка сопоставления (дообучение: метод матчинга).
+const METHOD_LABEL = { exact: "точное", fuzzy: "нечёткое", semantic: "семантика", manual: "вручную" };
+
 function Tab({ active, onClick, label, count, accent }) {
   return (
     <button
@@ -83,9 +86,11 @@ export default function VerificationPage() {
     else return toast("Выберите услугу из справочника или введите новую");
 
     try {
-      await reviewApi.match(payload);
+      const res = await reviewApi.match(payload);
       setUnmatched((list) => list.filter((i) => i.item_id !== item.item_id));
-      toast("Позиция сопоставлена");
+      toast(res?.learned_synonym
+        ? "Сопоставлено · синоним выучен (дообучение)"
+        : "Позиция сопоставлена");
     } catch {
       toast("Ошибка сопоставления");
     }
@@ -145,6 +150,9 @@ export default function VerificationPage() {
                     {item.suggestion && (
                       <div className="inline-flex items-center gap-[7px] px-[11px] py-[6px] rounded-[10px] text-[12px] font-semibold border" style={{ background: "rgba(94,92,230,.12)", borderColor: "rgba(94,92,230,.3)", color: "#9DB0FF" }}>
                         Похоже на: {item.suggestion.service_name} ({Math.round(item.suggestion.score * 100)}%)
+                        {item.suggestion.method && (
+                          <span className="opacity-60">· {METHOD_LABEL[item.suggestion.method] || item.suggestion.method}</span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -154,7 +162,7 @@ export default function VerificationPage() {
                     <select
                       value={c.serviceId ?? item.suggestion?.service_id ?? ""}
                       onChange={(e) => setItemChoice(item.item_id, { serviceId: e.target.value, newName: "" })}
-                      className="flex-1 min-w-[220px] bg-[#0E0E14] border border-white/10 rounded-[11px] px-[13px] py-[11px] text-[13.5px] text-ink outline-none focus:border-primary/50"
+                      className="flex-1 min-w-[150px] bg-[#0E0E14] border border-white/10 rounded-[11px] px-[13px] py-[11px] text-[13.5px] text-ink outline-none focus:border-primary/50"
                     >
                       <option value="">— выбрать услугу из справочника —</option>
                       {serviceOptions.map((o) => (
@@ -166,7 +174,7 @@ export default function VerificationPage() {
                       value={c.newName || ""}
                       onChange={(e) => setItemChoice(item.item_id, { newName: e.target.value, serviceId: "" })}
                       placeholder="создать новую услугу"
-                      className="flex-1 min-w-[180px] bg-[#0E0E14] border border-white/10 rounded-[11px] px-[13px] py-[11px] text-[13.5px] text-ink outline-none focus:border-primary/50"
+                      className="flex-1 min-w-[130px] bg-[#0E0E14] border border-white/10 rounded-[11px] px-[13px] py-[11px] text-[13.5px] text-ink outline-none focus:border-primary/50"
                     />
                     <button
                       onClick={() => handleMatch(item)}

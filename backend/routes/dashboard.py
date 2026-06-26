@@ -4,7 +4,7 @@ GET /api/dashboard/stats — кол-во документов по статус�
 """
 from flask import Blueprint, jsonify
 
-from models import db, PriceDocument, PriceItem, Partner, Service, ParseStatus
+from models import db, PriceDocument, PriceItem, Partner, Service, ParseStatus, LearnedSynonym
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -28,6 +28,27 @@ def stats():
 
     normalization_rate = round(items_matched / items_total * 100, 1) if items_total else 0.0
 
+    # Дообучение (ТЗ 4.3): сколько синонимов выучено на правках оператора и как
+    # распределены автосопоставления по методу (exact/fuzzy/semantic).
+    by_method = dict(
+        db.session.query(PriceItem.match_method, db.func.count())
+        .filter(PriceItem.is_active.is_(True), PriceItem.service_id.isnot(None))
+        .group_by(PriceItem.match_method).all()
+    )
+    learning = {
+        'learned_synonyms': LearnedSynonym.query.count(),
+        'by_source': dict(
+            db.session.query(LearnedSynonym.source, db.func.count())
+            .group_by(LearnedSynonym.source).all()
+        ),
+        'matches_by_method': {
+            'exact': by_method.get('exact', 0),
+            'fuzzy': by_method.get('fuzzy', 0),
+            'semantic': by_method.get('semantic', 0),
+            'manual': by_method.get('manual', 0),
+        },
+    }
+
     return jsonify({
         'documents': {
             'total': docs_total,
@@ -45,4 +66,5 @@ def stats():
         },
         'partners': Partner.query.count(),
         'services': Service.query.filter_by(is_active=True).count(),
+        'learning': learning,
     })

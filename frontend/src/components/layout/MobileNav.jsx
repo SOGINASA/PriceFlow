@@ -17,7 +17,7 @@ export default function MobileNav({ screen }) {
     const active = screen === item.key;
     const showBadge = item.key === "notifications" && unreadCount > 0 && !active;
     return (
-      <Link to={item.to} className="relative flex-1 flex flex-col items-center justify-center gap-[5px] py-[6px]">
+      <Link to={item.to} className="relative flex-1 flex flex-col items-center justify-center gap-[5px] py-2 min-h-[48px]">
         {/* Индикатор активной вкладки сверху */}
         <span className={`absolute top-0 h-[3px] rounded-full bg-progress transition-all duration-300 ${active ? "w-5 opacity-100" : "w-0 opacity-0"}`} />
         <span className={`relative grid place-items-center transition-transform duration-200 ${active ? "scale-105" : "scale-100"}`}>
@@ -52,7 +52,7 @@ export default function MobileNav({ screen }) {
       ))}
 
       {/* Профиль (открывает нижний шит) */}
-      <button onClick={openProfile} className="relative flex-1 flex flex-col items-center justify-center gap-[5px] py-[6px]">
+      <button onClick={openProfile} className="relative flex-1 flex flex-col items-center justify-center gap-[5px] py-2 min-h-[48px]">
         <span className={`grid place-items-center w-[26px] h-[26px] rounded-full font-display font-bold text-[12px] text-white bg-brand transition-all duration-200 ${profileOpen ? "scale-105 ring-2 ring-primary-400/60 ring-offset-2 ring-offset-[#0B0B12]" : "scale-100"}`}>
           {(user?.name || "Г").charAt(0)}
         </span>

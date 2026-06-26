@@ -1,7 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import useAuthStore from "../../store/useAuthStore";
 import useUIStore from "../../store/useUIStore";
-import { CLINICS } from "../../data/mock";
 import { adminApi } from "../../api";
 import { SCREEN_META } from "./navItems";
 
@@ -23,9 +22,8 @@ export default function Topbar({ screen }) {
         const res = await adminApi.login({ username: "partner@alfa.kz", password: "partner123" });
         setSession({ user: { name: res.user?.full_name || "Партнёр", email: "partner@alfa.kz" }, role: "partner", token: res.access_token, partnerId: res.user?.partner_id || null });
       } catch {
-        const cid = partnerId || "alpha";
-        const clinic = CLINICS.find((c) => c.id === cid);
-        enterPartner({ partnerId: cid, name: clinic?.name || "Клиника" });
+        // бэкенд недоступен — входим в демо-режим партнёра без мок-данных
+        enterPartner({ partnerId: partnerId || null, name: "Клиника" });
       }
       navigate("/app/my-prices");
       return;

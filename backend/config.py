@@ -63,6 +63,17 @@ class Config:
     AUTO_BUILD_CATALOG = os.environ.get('AUTO_BUILD_CATALOG', 'true').lower() in ('1', 'true', 'yes')
     CATALOG_CLUSTER_THRESHOLD = int(os.environ.get('CATALOG_CLUSTER_THRESHOLD', 90))
 
+    # === Семантическое сопоставление (дообучение, уровень 2 — ВКЛ по умолчанию) ===
+    # Доп. tier нормализации: если точное/нечёткое сопоставление не дотянуло до
+    # порога, ищем ближайшую услугу по эмбеддингам (sentence-transformers, косинус).
+    # Ловит перефразы/порядок слов/раскрытие аббревиатур, которые fuzzy пропускает,
+    # и устойчив к части мусора OCR/PDF (контекст важнее посимвольных ошибок).
+    # Модель грузится лениво (~один раз), эмбеддинги справочника кэшируются.
+    # Отключить можно SEMANTIC_MATCH_ENABLED=false (например, для слабого железа).
+    SEMANTIC_MATCH_ENABLED = os.environ.get('SEMANTIC_MATCH_ENABLED', 'true').lower() in ('1', 'true', 'yes')
+    SEMANTIC_MODEL = os.environ.get('SEMANTIC_MODEL', 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+    SEMANTIC_THRESHOLD = float(os.environ.get('SEMANTIC_THRESHOLD', 0.70))  # косинус 0..1 для автосопоставления
+
     # === LLM-канонизация справочника (дедуп синонимов, ТЗ 4.3) ===
     # Консолидация справочника (POST /catalog/consolidate) сводит дубликаты-синонимы
     # к каноническому названию через LLM. Провайдер — OpenAI-совместимый (по умолч.
@@ -102,6 +113,7 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=5)
+    SEMANTIC_MATCH_ENABLED = False   # в тестах не грузим тяжёлую модель эмбеддингов
 
 
 config = {
