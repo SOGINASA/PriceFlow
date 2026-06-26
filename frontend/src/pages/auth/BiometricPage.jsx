@@ -23,7 +23,7 @@ export default function BiometricPage() {
     setStatus("idle");
     setRingOffset(RING_CIRC);
   };
-
+// 3 ветки кода)
   // Запуск «сканирования»: заполняем кольцо, затем показываем успех.
   const scan = () => {
     if (status === "scanning") return;
