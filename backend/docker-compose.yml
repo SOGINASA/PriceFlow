@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: medarchive-db
+    environment:
+      POSTGRES_DB: medarchive
+      POSTGRES_USER: medarchive
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-medarchive}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medarchive"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: medarchive-redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: .
+    container_name: medarchive-backend
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      FLASK_ENV: production
+      DATABASE_URL: postgresql://medarchive:${DB_PASSWORD:-medarchive}@db:5432/medarchive
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me}
+    ports:
+      - "5252:5252"
+    volumes:
+      - ./storage:/app/storage
+    restart: unless-stopped
+
+  worker:
+    build: .
+    container_name: medarchive-worker
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: postgresql://medarchive:${DB_PASSWORD:-medarchive}@db:5432/medarchive
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./storage:/app/storage
+    command: celery -A services.tasks.celery_app worker --loglevel=info --concurrency=2
+
+volumes:
+  pgdata:

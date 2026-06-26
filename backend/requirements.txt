@@ -1,0 +1,39 @@
+# === Web / API ===
+Flask==3.1.2
+flask-cors==6.0.1
+Flask-JWT-Extended==4.7.1
+Flask-Migrate==4.1.0
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.44
+alembic==1.17.1
+python-dotenv==1.0.0
+gunicorn==23.0.0
+
+# === База данных ===
+psycopg2-binary==2.9.10        # PostgreSQL драйвер
+
+# === Очередь обработки ===
+celery==5.4.0
+redis==5.2.1
+
+# === Извлечение данных (ТЗ 4.2) ===
+pdfplumber==0.11.4             # текстовый PDF + таблицы
+PyMuPDF==1.25.1               # быстрый разбор PDF (fitz)
+python-docx==1.1.2            # DOCX + tracked changes
+openpyxl==3.1.5              # XLSX
+pandas==2.2.3               # табличная постобработка
+
+# === OCR (сканы) ===
+pytesseract==0.3.13          # обёртка Tesseract (бинарь ставится в систему/Docker)
+pdf2image==1.17.0            # рендер PDF-страниц в изображения (нужен poppler)
+Pillow==11.0.0
+
+# === Нормализация / нечёткий поиск (ТЗ 4.3) ===
+rapidfuzz==3.10.1
+# sentence-transformers==3.3.1  # опционально: семантический матчинг по эмбеддингам
+
+# === Внешний HTTP (опц. облачный OCR / LLM) ===
+requests==2.32.5
+
+# === Тесты ===
+pytest==9.0.2
