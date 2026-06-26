@@ -1,17 +1,42 @@
+/* ---------- Подключение фирменных шрифтов из дизайна ---------- */
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@300;400;500;600;700;800&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* ---------- Базовые глобальные стили (перенос из дизайна) ---------- */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+    overflow-x: hidden;
+  }
+  /* Выделение текста в фирменном цвете */
+  ::selection {
+    background: rgba(94, 92, 230, 0.4);
+    color: #fff;
+  }
+  /* Кастомный скроллбар как в дизайне приложения */
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+  }
+  input::placeholder {
+    color: rgba(245, 245, 247, 0.32);
+  }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+@layer components {
+  /* Градиентный текст (используется в заголовках hero и статистике) */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(115deg, #6e8bff, #a78bfa 55%, #5e5ce6);
+  }
 }

@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#08080C;color:#F5F5F7;font-family:'Manrope',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:rgba(94,92,230,.4);color:#fff}
+  input,button{font-family:inherit}
+  input::placeholder{color:rgba(245,245,247,.32)}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:6px}
+  @keyframes pulseDot{0%,100%{opacity:.35;transform:scale(1)}50%{opacity:1;transform:scale(1.35)}}
+  @keyframes auA{0%{transform:translate(0,0) scale(1)}50%{transform:translate(50px,-30px) scale(1.15)}100%{transform:translate(0,0) scale(1)}}
+  @keyframes auB{0%{transform:translate(0,0) scale(1.1)}50%{transform:translate(-60px,40px) scale(.92)}100%{transform:translate(0,0) scale(1.1)}}
+  @keyframes spinSlow{to{transform:rotate(360deg)}}
+  @keyframes fadeUpItem{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes logIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes floatSoft{0%{transform:translateY(0)}50%{transform:translateY(-9px)}100%{transform:translateY(0)}}
+  @keyframes ringPulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:0;transform:scale(1.4)}}
+  @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+  @keyframes slideUpNav{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  /* ---------- responsive ---------- */
+  @media (max-width: 920px){
+    .pf-aside{display:none !important;}
+    .pf-col{margin-left:0 !important;}
+    #app-root[data-view="app"] [data-mobnav]{display:flex !important;}
+    .pf-main{padding:20px 14px 104px !important;}
+    [data-topbar-sub]{display:none !important;}
+    .pf-bell{display:none !important;}
+    .pf-2col-report,.pf-2col-admin{grid-template-columns:1fr !important;}
+    .pf-export-row{flex-wrap:wrap !important;}
+  }
+  @media (max-width: 640px){
+    .pf-grid4{grid-template-columns:repeat(2,1fr) !important;}
+    .pf-topbar{padding:13px 16px !important;}
+    .pf-topbar h1{font-size:17px !important;}
+    .pf-roleswitch button{padding:6px 9px !important;font-size:11.5px !important;}
+    .pf-tablewrap{overflow-x:auto !important;}
+    .pf-tablewrap table{min-width:460px !important;}
+    .pf-report-head{flex-direction:column !important;align-items:flex-start !important;}
+  }
+  @media (max-width: 460px){
+    .pf-reg-row{flex-direction:column !important;}
+    .pf-authpad{padding:22px 18px !important;}
+  }
+</style>
+</helmet>
+
+<div id="app-root" style="position:relative;width:100%;min-height:100vh;background:#08080C;overflow:hidden">
+
+  <!-- aurora bg -->
+  <div style="position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden">
+    <div style="position:absolute;top:-15%;left:8%;width:620px;height:620px;border-radius:50%;background:radial-gradient(circle,rgba(94,92,230,.4),transparent 62%);filter:blur(50px);animation:auA 18s ease-in-out infinite"></div>
+    <div style="position:absolute;bottom:-20%;right:4%;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(167,139,250,.32),transparent 62%);filter:blur(55px);animation:auB 22s ease-in-out infinite"></div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- ===================== AUTH WRAPPER ========================= -->
+  <!-- ============================================================ -->
+  <div data-wrap="auth" style="position:relative;z-index:2;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:80px 24px 56px">
+
+    <a href="PriceFlow%20Landing.dc.html" style="position:absolute;top:24px;left:24px;display:inline-flex;align-items:center;gap:8px;padding:9px 15px 9px 12px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(245,245,247,.7);text-decoration:none;font-size:13.5px;font-weight:600;transition:background .2s,color .2s,transform .2s" style-hover="background:rgba(255,255,255,.1);color:#F5F5F7;transform:translateX(-2px)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      На главную
+    </a>
+
+    <!-- ---------- LOGIN ---------- -->
+    <section data-screen="login" data-screen-label="Вход" style="width:100%;max-width:440px">
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:30px">
+        <span style="display:grid;place-items:center;width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,#6E8BFF,#5E5CE6);box-shadow:0 0 30px rgba(94,92,230,.55);margin-bottom:18px">
+          <svg width="27" height="27" viewBox="0 0 16 16" fill="none"><path d="M2 11.5 6 6l3 3 5-6.5" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <h1 style="font-family:'Sora';font-weight:700;font-size:30px;letter-spacing:-.025em">С возвращением</h1>
+        <p style="margin-top:8px;font-size:15px;color:rgba(245,245,247,.5)">Войдите в PriceFlow, чтобы продолжить</p>
+      </div>
+      <div style="border-radius:24px;background:rgba(20,20,28,.72);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.09);padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.5)">
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <button data-press style="display:flex;align-items:center;justify-content:center;gap:11px;width:100%;padding:13px;border-radius:13px;background:#fff;color:#1a1a1a;border:none;cursor:pointer;font-size:15px;font-weight:600;transition:transform .2s,box-shadow .25s" style-hover="transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,.4)">
+            <svg width="19" height="19" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.6 9.2c0-.6-.05-1.2-.15-1.7H9v3.3h4.8a4.1 4.1 0 0 1-1.8 2.7v2.2h2.9c1.7-1.6 2.7-3.9 2.7-6.5Z"/><path fill="#34A853" d="M9 18c2.4 0 4.5-.8 6-2.2l-2.9-2.2c-.8.5-1.8.9-3.1.9-2.4 0-4.4-1.6-5.1-3.8H.9v2.3A9 9 0 0 0 9 18Z"/><path fill="#FBBC05" d="M3.9 10.7a5.4 5.4 0 0 1 0-3.4V5H.9a9 9 0 0 0 0 8l3-2.3Z"/><path fill="#EA4335" d="M9 3.6c1.3 0 2.5.45 3.4 1.3l2.6-2.6A9 9 0 0 0 .9 5l3 2.3C4.6 5.2 6.6 3.6 9 3.6Z"/></svg>
+            Продолжить с Google
+          </button>
+          <button data-press style="display:flex;align-items:center;justify-content:center;gap:11px;width:100%;padding:13px;border-radius:13px;background:rgba(255,255,255,.06);color:#F5F5F7;border:1px solid rgba(255,255,255,.12);cursor:pointer;font-size:15px;font-weight:600;transition:transform .2s,background .25s" style-hover="transform:translateY(-1px);background:rgba(255,255,255,.1)">
+            <svg width="17" height="17" viewBox="0 0 16 16" fill="#F5F5F7"><path d="M11 8.5c0-1.7 1.4-2.5 1.4-2.6-.8-1.1-2-1.3-2.4-1.3-1-.1-2 .6-2.5.6s-1.3-.6-2.2-.6c-1.1 0-2.2.7-2.7 1.7-1.2 2-.3 5 .8 6.6.5.8 1.2 1.7 2 1.6.8 0 1.1-.5 2.1-.5s1.3.5 2.1.5 1.4-.8 1.9-1.6c.6-.9.9-1.8.9-1.8s-1.4-.6-1.4-2.1Zm-1.7-3.9c.4-.5.7-1.3.6-2-.6 0-1.4.4-1.8.9-.4.4-.8 1.2-.7 1.9.7.1 1.4-.3 1.9-.8Z"/></svg>
+            Продолжить с Apple
+          </button>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;margin:20px 0">
+          <div style="flex:1;height:1px;background:rgba(255,255,255,.09)"></div>
+          <span style="font-size:12.5px;color:rgba(245,245,247,.35)">или по email</span>
+          <div style="flex:1;height:1px;background:rgba(255,255,255,.09)"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <label style="display:flex;flex-direction:column;gap:7px">
+            <span style="font-size:12.5px;font-weight:600;color:rgba(245,245,247,.6)">Email</span>
+            <input data-field type="email" placeholder="you@clinic.kz" style="width:100%;padding:13px 15px;border-radius:12px;background:rgba(12,12,18,.7);border:1px solid rgba(255,255,255,.1);color:#F5F5F7;font-size:15px;outline:none;transition:border-color .25s,box-shadow .25s"/>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:7px">
+            <span style="font-size:12.5px;font-weight:600;color:rgba(245,245,247,.6)">Пароль</span>
+            <input data-field type="password" placeholder="••••••••" style="width:100%;padding:13px 15px;border-radius:12px;background:rgba(12,12,18,.7);border:1px solid rgba(255,255,255,.1);color:#F5F5F7;font-size:15px;outline:none;transition:border-color .25s,box-shadow .25s"/>
+          </label>
+          <button data-goto="upload" data-press style="margin-top:4px;width:100%;padding:14px;border-radius:13px;background:linear-gradient(135deg,#6E8BFF,#5E5CE6);color:#fff;border:none;cursor:pointer;font-size:15px;font-weight:600;box-shadow:0 10px 30px rgba(94,92,230,.4);transition:transform .2s,box-shadow .3s" style-hover="transform:translateY(-2px);box-shadow:0 16px 44px rgba(94,92,230,.55)">Войти</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:13px;margin-top:20px">
+          <div style="flex:1;height:1px;background:rgba(255,255,255,.09)"></div>
+          <span style="font-size:12px;color:rgba(245,245,247,.35)">быстрый вход</span>
+          <div style="flex:1;height:1px;background:rgba(255,255,255,.09)"></div>
+        </div>
+        <div style="display:flex;gap:11px;margin-top:16px">
+          <button data-goto="biometric" data-bio-target="fp" data-press style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:15px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);cursor:pointer;color:#F5F5F7;transition:border-color .25s,background .25s" style-hover="border-color:rgba(94,92,230,.5);background:rgba(94,92,230,.08)">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9DB0FF" stroke-width="1.6" stroke-linecap="round"><path d="M12 5.5c-3.4 0-6.2 2.8-6.2 6.2v2.8"/><path d="M18.2 14.5V11.7c0-3.4-2.8-6.2-6.2-6.2"/><path d="M8.4 15.6V11.7a3.6 3.6 0 0 1 7.2 0v4.4"/><path d="M10.7 16.2V11.7a1.3 1.3 0 0 1 2.6 0v5.2"/></svg>
+            <span style="font-size:12.5px;font-weight:600">Отпечаток</span>
+          </button>
+          <button data-goto="biometric" data-bio-target="face" data-press style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:15px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);cursor:pointer;color:#F5F5F7;transition:border-color .25s,background .25s" style-hover="border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.08)">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C9A8FF" stroke-width="1.6" stroke-linecap="round"><path d="M6 9V7a1 1 0 0 1 1-1h2M15 6h2a1 1 0 0 1 1 1v2M18 15v2a1 1 0 0 1-1 1h-2M9 18H7a1 1 0 0 1-1-1v-2"/><circle cx="9.5" cy="11" r=".6" fill="#C9A8FF"/><circle cx="14.5" cy="11" r=".6" fill="#C9A8FF"/><path d="M12 11.5v2M10.5 15c1 .8 2 .8 3 0"/></svg>
+            <span style="font-size:12.5px;font-weight:600">Лицо</span>
+          </button>
+        </div>
+      </div>
+      <p style="text-align:center;margin-top:22px;font-size:14px;color:rgba(245,245,247,.5)">Нет аккаунта? <button data-goto="register" style="background:none;border:none;color:#9DB0FF;font-size:14px;font-weight:600;cursor:pointer;padding:0">Создать</button></p>
+    </section>
+
+    <!-- ---------- REGISTER ---------- -->
+    <section data-screen="register" data-screen-label="Регистрация" style="display:none;width:100%;max-width:460px">
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:26px">
+        <span style="display:grid;place-items:center;width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,#6E8BFF,#5E5CE6);box-shadow:0 0 30px rgba(94,92,230,.55);margin-bottom:18px">
+          <svg width="27" height="27" viewBox="0 0 16 16" fill="none"><path d="M2 11.5 6 6l3 3 5-6.5" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <h1 style="font-family:'Sora';font-weight:700;font-size:30px;letter-spacing:-.025em">Создать аккаунт</h1>
+        <p style="margin-top:8px;font-size:15px;color:rgba(245,245,247,.5)">Пара шагов — и вы внутри PriceFlow</p>
+      </div>
+      <div style="border-radius:24px;background:rgba(20,20,28,.72);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.09);padding:28px;box-shadow:0 30px 80px rgba(0,0,0,.5)">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="pf-reg-row" style="display:flex;gap:12px">
+            <label style="flex:1;display:flex;flex-direction:column;gap:7px">
+              <span style="font-size:12.5px;font-weight:600;color:rgba(245,245,247,.6)">Имя</span>
+              <input data-field type="text" placeholder="Алия" style="width:100%;padding:13px 15px;border-radius:12px;background:rgba(12,12,18,.7);border:1px solid rgba(255,255,255,.1);color:#F5F5F7;font-size:15px;outline:none;transition:border-color .25s,box-shadow .25s"/>
+            </label>
+            <label style="flex:1;display:flex;flex-direction:column;gap:7px">
+              <span style="font-size:12.5px;font-weight:600;color:rgba(245,245,247,.6)">Организация</span>
+              <input data-field type="text" placeholder="Клиника «Альфа»" style="width:100%;padding:13px 15px;border-radius:12px;background:rgba(12,12,18,.7);border:1px solid rgba(255,255,255,.1);color:#F5F5F7;font-size:15px;outline:none;transition:border-color .25s,box-shadow .25s"/>
+            </label>
+          </div>
+          <label style="display:flex;flex-direction:column;gap:7px">
+            <span style="font-size:12.5px;font-weight:600;color:rgba(245,245,247,.6)">Email</span>
+            <input data-field type="email" placeholder="you@clinic.kz" style="width:100%;padding:13px 15px;border-radius:12px;background:rgba(12,12,18,.7);border:1px solid rgba(255,255,255,.1);color:#F5F5F7;font-size:15px;outline:none;transition:border-color .25s,box-shadow .25s"/>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:7px">
+            <span style="font-size:12.5px;font-weight:600;color:rgba(245,245,247,.6)">Пароль</span>
+            <input data-field type="password" placeholder="Минимум 8 символов" style="width:100%;padding:13px 15px;border-radius:12px;background:rgba(12,12,18,.7);border:1px solid rgba(255,255,255,.1);color:#F5F5F7;font-size:15px;outline:none;transition:border-color .25s,box-shadow .25s"/>
+          </label>
+          <div style="margin-top:2px">
+            <span style="font-size:12.5px;font-weight:600;color:rgba(245,245,247,.6)">Тип аккаунта</span>
+            <div data-role-pick style="display:flex;gap:10px;margin-top:9px">
+              <button data-role-opt="user" style="flex:1;display:flex;align-items:center;gap:10px;padding:13px;border-radius:13px;background:rgba(94,92,230,.12);border:1px solid rgba(94,92,230,.45);cursor:pointer;color:#F5F5F7;text-align:left;transition:all .25s">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9DB0FF" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg>
+                <span><span style="display:block;font-size:14px;font-weight:600">Пользователь</span><span style="display:block;font-size:11.5px;color:rgba(245,245,247,.45)">Загрузка и отчёты</span></span>
+              </button>
+              <button data-role-opt="admin" style="flex:1;display:flex;align-items:center;gap:10px;padding:13px;border-radius:13px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);cursor:pointer;color:#F5F5F7;text-align:left;transition:all .25s">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(245,245,247,.6)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5c0 4.2 2.9 7.6 7 9 4.1-1.4 7-4.8 7-9V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
+                <span><span style="display:block;font-size:14px;font-weight:600">Администратор</span><span style="display:block;font-size:11.5px;color:rgba(245,245,247,.45)">Полный контроль</span></span>
+              </button>
+            </div>
+          </div>
+          <button data-goto="biometric" data-bio-target="fp" data-press style="margin-top:6px;width:100%;padding:14px;border-radius:13px;background:linear-gradient(135deg,#6E8BFF,#5E5CE6);color:#fff;border:none;cursor:pointer;font-size:15px;font-weight:600;box-shadow:0 10px 30px rgba(94,92,230,.4);transition:transform .2s,box-shadow .3s" style-hover="transform:translateY(-2px);box-shadow:0 16px 44px rgba(94,92,230,.55)">Продолжить → настройка биометрии</button>
+        </div>
+      </div>
+      <p style="text-align:center;margin-top:22px;font-size:14px;color:rgba(245,245,247,.5)">Уже есть аккаунт? <button data-goto="login" style="background:none;border:none;color:#9DB0FF;font-size:14px;font-weight:600;cursor:pointer;padding:0">Войти</button></p>
+    </section>
+
+    <!-- ---------- BIOMETRIC ---------- -->
+    <section data-screen="biometric" data-screen-label="Биометрия" style="display:none;width:100%;max-width:440px">
+      <div style="border-radius:26px;background:rgba(20,20,28,.72);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.09);padding:36px 30px;box-shadow:0 30px 80px rgba(0,0,0,.5);text-align:center;position:relative;overflow:hidden">
+        <div style="position:absolute;top:-30%;left:50%;width:340px;height:340px;margin-left:-170px;border-radius:50%;background:radial-gradient(circle,rgba(94,92,230,.28),transparent 65%);filter:blur(46px);pointer-events:none"></div>
+        <div style="position:relative">
+          <div data-bio-tabs style="display:inline-flex;gap:4px;padding:4px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);margin-bottom:30px">
+            <button data-bio-tab="fp" style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:9px;background:rgba(94,92,230,.9);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .25s">Отпечаток</button>
+            <button data-bio-tab="face" style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:9px;background:transparent;color:rgba(245,245,247,.55);border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .25s">Лицо</button>
+          </div>
+
+          <div style="position:relative;width:170px;height:170px;margin:0 auto">
+            <svg viewBox="0 0 170 170" style="position:absolute;inset:0;width:100%;height:100%">
+              <circle cx="85" cy="85" r="78" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3"/>
+              <circle data-bio-ring cx="85" cy="85" r="78" fill="none" stroke="url(#bioGrad)" stroke-width="4" stroke-linecap="round" stroke-dasharray="490" stroke-dashoffset="490" transform="rotate(-90 85 85)"/>
+              <defs><linearGradient id="bioGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6E8BFF"/><stop offset="1" stop-color="#A78BFA"/></linearGradient>
+              <filter id="bioGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+            </svg>
+            <!-- fingerprint visual -->
+            <div data-bio-vis="fp" style="position:absolute;inset:0;display:grid;place-items:center">
+              <svg width="92" height="92" viewBox="0 0 120 120" fill="none">
+                <g stroke="#8FA4FF" stroke-width="2.4" stroke-linecap="round" fill="none">
+                  <path d="M60 28c-17 0-31 14-31 31v14"/><path d="M91 73V59c0-17-14-31-31-31"/>
+                  <path d="M42 78V59a18 18 0 0 1 36 0v22" opacity=".88"/><path d="M53 84V59a7 7 0 0 1 14 0v26" opacity=".72"/><path d="M60 59v28" opacity=".58"/>
+                </g>
+                <rect data-bio-scan x="22" y="20" width="76" height="3" rx="1.5" fill="#C9D0FF" filter="url(#bioGlow)" opacity="0"/>
+              </svg>
+            </div>
+            <!-- face visual -->
+            <div data-bio-vis="face" style="position:absolute;inset:0;display:none;place-items:center">
+              <svg width="92" height="92" viewBox="0 0 120 120" fill="none">
+                <g stroke="#C9A8FF" stroke-width="2.6" stroke-linecap="round" fill="none"><path d="M30 44V36a6 6 0 0 1 6-6h8"/><path d="M76 30h8a6 6 0 0 1 6 6v8"/><path d="M90 76v8a6 6 0 0 1-6 6h-8"/><path d="M44 90h-8a6 6 0 0 1-6-6v-8"/></g>
+                <g stroke="#E3D7FF" stroke-width="2" stroke-linecap="round" fill="none" opacity=".9"><circle cx="50" cy="54" r="2.4" fill="#E3D7FF" stroke="none"/><circle cx="70" cy="54" r="2.4" fill="#E3D7FF" stroke="none"/><path d="M60 56v9"/><path d="M52 72c3 3 13 3 16 0"/></g>
+                <rect data-bio-scan x="30" y="30" width="60" height="2.8" rx="1.4" fill="#E3D7FF" filter="url(#bioGlow)" opacity="0"/>
+              </svg>
+            </div>
+            <!-- success check -->
+            <div data-bio-check style="position:absolute;inset:0;display:none;place-items:center;opacity:0;transform:scale(.6);transition:opacity .4s,transform .5s cubic-bezier(.2,1.4,.4,1)">
+              <svg width="84" height="84" viewBox="0 0 84 84"><circle cx="42" cy="42" r="40" fill="rgba(48,209,88,.14)" stroke="#30D158" stroke-width="2.5"/><path d="M28 43l9 9 19-20" fill="none" stroke="#30D158" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+
+          <h2 data-bio-title style="font-family:'Sora';font-weight:600;font-size:22px;margin-top:26px">Настройка отпечатка</h2>
+          <p data-bio-desc style="margin-top:9px;font-size:14.5px;line-height:1.55;color:rgba(245,245,247,.5);max-width:300px;margin-left:auto;margin-right:auto">Приложите палец к сенсору, чтобы сохранить отпечаток для входа.</p>
+          <div data-bio-status style="margin-top:18px;display:inline-flex;align-items:center;gap:8px;padding:8px 15px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:600;color:rgba(245,245,247,.6)"><span style="width:7px;height:7px;border-radius:50%;background:#6E8BFF;animation:pulseDot 1.6s infinite"></span>Ожидание…</div>
+
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:26px">
+            <button data-bio-action data-press style="width:100%;padding:14px;border-radius:13px;background:linear-gradient(135deg,#6E8BFF,#5E5CE6);color:#fff;border:none;cursor:pointer;font-size:15px;font-weight:600;box-shadow:0 10px 30px rgba(94,92,230,.4);transition:transform .2s,box-shadow .3s,opacity .3s" style-hover="transform:translateY(-2px);box-shadow:0 16px 44px rgba(94,92,230,.55)">Сканировать</button>
+            <button data-goto="upload" style="width:100%;padding:12px;border-radius:13px;background:transparent;color:rgba(245,245,247,.5);border:none;cursor:pointer;font-size:14px;font-weight:600">Пропустить пока</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- ===================== APP WRAPPER ========================== -->
+  <!-- ============================================================ -->
+  <div data-wrap="app" style="display:none;position:relative;z-index:2;min-height:100vh">
+    <!-- sidebar -->
+    <aside class="pf-aside" style="position:fixed;top:0;left:0;bottom:0;width:248px;z-index:10;display:flex;flex-direction:column;padding:22px 16px;background:rgba(14,14,20,.7);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-right:1px solid rgba(255,255,255,.07)">
+      <a data-goto="upload" style="display:flex;align-items:center;gap:11px;padding:6px 8px;margin-bottom:24px;cursor:pointer">
+        <span style="display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#6E8BFF,#5E5CE6);box-shadow:0 0 18px rgba(94,92,230,.5)">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M2 11.5 6 6l3 3 5-6.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span style="font-family:'Sora';font-weight:700;font-size:18px;letter-spacing:-.02em">PriceFlow</span>
+      </a>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,245,247,.3);padding:0 10px;margin-bottom:10px">Рабочая область</div>
+      <nav style="display:flex;flex-direction:column;gap:4px">
+        <button data-nav="upload" data-goto="upload" style="display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:11px;background:rgba(94,92,230,.14);border:1px solid rgba(94,92,230,.3);color:#F5F5F7;cursor:pointer;font-size:14.5px;font-weight:600;transition:all .2s;text-align:left">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 20h14"/></svg>Загрузка
+        </button>
+        <button data-nav="report" data-goto="report" style="display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:11px;background:transparent;border:1px solid transparent;color:rgba(245,245,247,.6);cursor:pointer;font-size:14.5px;font-weight:600;transition:all .2s;text-align:left">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>Отчёты
+        </button>
+        <button data-nav="search" data-goto="search" style="display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:11px;background:transparent;border:1px solid transparent;color:rgba(245,245,247,.6);cursor:pointer;font-size:14.5px;font-weight:600;transition:all .2s;text-align:left">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>Поиск клиник
+        </button>
+        <button data-nav="admin" data-goto="admin" data-admin-only style="display:none;align-items:center;gap:12px;padding:11px 12px;border-radius:11px;background:transparent;border:1px solid transparent;color:rgba(245,245,247,.6);cursor:pointer;font-size:14.5px;font-weight:600;transition:all .2s;text-align:left">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h4l2-6 3 12 2.5-8 1.5 4h5"/></svg>Аналитика
+        </button>
+      </nav>
+      <a href="PriceFlow%20Landing.dc.html" style="display:flex;align-items:center;gap:12px;margin-top:auto;padding:11px 12px;border-radius:11px;background:transparent;border:1px solid transparent;color:rgba(245,245,247,.5);cursor:pointer;font-size:14px;font-weight:600;text-decoration:none;transition:all .2s" style-hover="background:rgba(255,255,255,.05);color:#F5F5F7">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>На сайт
+      </a>
+      <div style="padding-top:16px;margin-top:14px;border-top:1px solid rgba(255,255,255,.07)">
+        <div style="display:flex;align-items:center;gap:11px;padding:8px 8px;border-radius:12px">
+          <div data-avatar style="display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#6E8BFF,#5E5CE6);font-family:'Sora';font-weight:700;font-size:15px;color:#fff;flex-shrink:0">А</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Алия Нурлан</div>
+            <div data-role-label style="font-size:11.5px;color:rgba(245,245,247,.45)">Пользователь</div>
+          </div>
+          <button data-goto="login" title="Выйти" style="display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(245,245,247,.6);cursor:pointer;transition:all .2s" style-hover="background:rgba(255,95,87,.12);color:#FF8B85">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- main column -->
+    <div class="pf-col" style="margin-left:248px;min-height:100vh;display:flex;flex-direction:column">
+      <!-- topbar -->
+      <header class="pf-topbar" style="position:sticky;top:0;z-index:9;display:flex;align-items:center;justify-content:space-between;padding:16px 30px;background:rgba(8,8,12,.6);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.06)">
+        <div>
+          <h1 data-topbar-title style="font-family:'Sora';font-weight:600;font-size:20px;letter-spacing:-.015em">Новый анализ прайсов</h1>
+          <p data-topbar-sub style="font-size:13px;color:rgba(245,245,247,.45);margin-top:2px">Загрузите архивы прайсов клиник-партнёров</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div data-role-switch class="pf-roleswitch" style="display:flex;align-items:center;gap:3px;padding:3px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)">
+            <button data-setrole="user" style="border:none;cursor:pointer;font-weight:600;font-size:12.5px;padding:6px 12px;border-radius:8px;background:rgba(94,92,230,.9);color:#fff;transition:all .25s">Пользователь</button>
+            <button data-setrole="admin" style="border:none;cursor:pointer;font-weight:600;font-size:12.5px;padding:6px 12px;border-radius:8px;background:transparent;color:rgba(245,245,247,.5);transition:all .25s">Админ</button>
+          </div>
+          <button class="pf-bell" style="display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(245,245,247,.7);cursor:pointer;position:relative" style-hover="background:rgba(255,255,255,.09)">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            <span style="position:absolute;top:9px;right:10px;width:7px;height:7px;border-radius:50%;background:#6E8BFF;box-shadow:0 0 7px #6E8BFF"></span>
+          </button>
+        </div>
+      </header>
+
+      <!-- content -->
+      <main class="pf-main" style="flex:1;padding:30px;max-width:1180px;width:100%;margin:0 auto">
+
+        <!-- ---------- UPLOAD ---------- -->
+        <section data-screen="upload" data-screen-label="Загрузка" style="display:flex;flex-direction:column;gap:22px">
+          <div data-dropzone style="position:relative;border-radius:24px;border:1.6px dashed rgba(94,92,230,.4);background:rgba(94,92,230,.05);padding:54px 30px;text-align:center;cursor:pointer;transition:border-color .25s,background .25s,transform .25s" style-hover="border-color:rgba(94,92,230,.8);background:rgba(94,92,230,.09)">
+            <div style="display:grid;place-items:center;width:74px;height:74px;border-radius:20px;background:linear-gradient(135deg,rgba(110,139,255,.25),rgba(94,92,230,.15));border:1px solid rgba(94,92,230,.4);margin:0 auto 22px;animation:floatSoft 4s ease-in-out infinite">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#9DB0FF" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5"/><path d="M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
+            </div>
+            <div style="font-family:'Sora';font-weight:600;font-size:20px">Перетащите прайсы сюда</div>
+            <div style="margin-top:8px;font-size:14.5px;color:rgba(245,245,247,.5)">или <span style="color:#9DB0FF;font-weight:600">выберите файлы</span> — PDF, Excel, CSV, фото и сканы</div>
+            <input data-file-input type="file" multiple accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.docx" style="display:none"/>
+            <div style="margin-top:20px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+              <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:12.5px;color:rgba(245,245,247,.6)">До 200 МБ</span>
+              <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:12.5px;color:rgba(245,245,247,.6)">Пакетная загрузка</span>
+              <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:12.5px;color:rgba(245,245,247,.6)">Распознавание сканов</span>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:14px;font-weight:600;color:rgba(245,245,247,.7)">Файлы в очереди <span data-file-count style="color:rgba(245,245,247,.4)">(0)</span></div>
+            <button data-demo-files style="display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#F5F5F7;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s" style-hover="background:rgba(255,255,255,.09)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Добавить демо-файлы
+            </button>
+          </div>
+
+          <div data-file-list style="display:flex;flex-direction:column;gap:10px">
+            <div data-file-empty style="padding:34px;text-align:center;border-radius:18px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.015);color:rgba(245,245,247,.4);font-size:14.5px">Пока пусто. Перетащите файлы или добавьте демо-набор, чтобы увидеть обработку.</div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-radius:18px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07)">
+            <div>
+              <div style="font-size:14.5px;font-weight:600">Готовы к обработке?</div>
+              <div style="font-size:13px;color:rgba(245,245,247,.45);margin-top:2px">PriceFlow распознает, нормализует и сравнит все позиции автоматически.</div>
+            </div>
+            <button data-run-btn disabled style="display:inline-flex;align-items:center;gap:10px;padding:14px 26px;border-radius:13px;background:rgba(94,92,230,.3);color:rgba(255,255,255,.5);border:none;cursor:not-allowed;font-size:15px;font-weight:600;box-shadow:none;transition:all .3s">
+              Запустить обработку
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+        </section>
+
+        <!-- ---------- ANALYZING ---------- -->
+        <section data-screen="analyzing" data-screen-label="Анализ" style="display:none;flex-direction:column;align-items:center;gap:8px;padding-top:6px">
+          <div style="position:relative;width:100%;max-width:680px;border-radius:26px;background:linear-gradient(180deg,rgba(20,20,28,.7),rgba(12,12,18,.6));border:1px solid rgba(255,255,255,.08);box-shadow:0 30px 90px rgba(0,0,0,.5);overflow:hidden;padding:38px 30px">
+            <div style="position:absolute;top:-30%;left:50%;width:420px;height:420px;margin-left:-210px;border-radius:50%;background:radial-gradient(circle,rgba(94,92,230,.3),transparent 65%);filter:blur(50px);pointer-events:none"></div>
+            <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+              <!-- progress ring + core -->
+              <div style="position:relative;width:200px;height:200px">
+                <svg viewBox="0 0 200 200" style="width:100%;height:100%">
+                  <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="5"/>
+                  <circle data-an-ring cx="100" cy="100" r="88" fill="none" stroke="url(#anGrad)" stroke-width="6" stroke-linecap="round" stroke-dasharray="553" stroke-dashoffset="553" transform="rotate(-90 100 100)"/>
+                  <circle cx="100" cy="100" r="58" fill="none" stroke="#7E7BFF" stroke-width="1.5" stroke-dasharray="5 11" opacity=".6"><animateTransform attributeName="transform" type="rotate" from="0 100 100" to="360 100 100" dur="8s" repeatCount="indefinite"/></circle>
+                  <circle cx="100" cy="100" r="44" fill="url(#anCore)"/>
+                  <defs>
+                    <linearGradient id="anGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6E8BFF"/><stop offset="1" stop-color="#A78BFA"/></linearGradient>
+                    <radialGradient id="anCore" cx="50%" cy="42%" r="62%"><stop offset="0" stop-color="#C9D0FF"/><stop offset="55%" stop-color="#5E5CE6"/><stop offset="100%" stop-color="#2C2470"/></radialGradient>
+                  </defs>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                  <div data-an-percent style="font-family:'Sora';font-weight:700;font-size:38px;letter-spacing:-.02em">0%</div>
+                  <div data-an-phase style="font-size:11.5px;font-weight:600;color:rgba(245,245,247,.6);letter-spacing:.04em;margin-top:2px">Подготовка</div>
+                </div>
+              </div>
+              <h2 style="font-family:'Sora';font-weight:600;font-size:22px;margin-top:26px">Обрабатываем ваши прайсы</h2>
+              <p style="margin-top:8px;font-size:14.5px;color:rgba(245,245,247,.5);text-align:center">Распознаём, приводим к единому формату и сравниваем цены</p>
+
+              <!-- steps -->
+              <div data-an-steps style="display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin-top:24px">
+                <div data-an-step="0" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;background:rgba(94,92,230,.14);border:1px solid rgba(94,92,230,.35);transition:all .3s"><span data-dot style="display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#6E8BFF"></span><span style="font-size:13px;font-weight:600">Загрузка</span></div>
+                <div data-an-step="1" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);transition:all .3s"><span data-dot style="display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:rgba(245,245,247,.25)"></span><span style="font-size:13px;font-weight:600;color:rgba(245,245,247,.65)">Распознавание</span></div>
+                <div data-an-step="2" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);transition:all .3s"><span data-dot style="display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:rgba(245,245,247,.25)"></span><span style="font-size:13px;font-weight:600;color:rgba(245,245,247,.65)">Нормализация</span></div>
+                <div data-an-step="3" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);transition:all .3s"><span data-dot style="display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:rgba(245,245,247,.25)"></span><span style="font-size:13px;font-weight:600;color:rgba(245,245,247,.65)">Сравнение</span></div>
+              </div>
+            </div>
+          </div>
+          <!-- live log -->
+          <div style="width:100%;max-width:680px;margin-top:16px;border-radius:18px;background:rgba(10,10,15,.7);border:1px solid rgba(255,255,255,.07);overflow:hidden">
+            <div style="display:flex;align-items:center;gap:9px;padding:11px 16px;border-bottom:1px solid rgba(255,255,255,.06)">
+              <span style="width:8px;height:8px;border-radius:50%;background:#6E8BFF;animation:pulseDot 1.4s infinite"></span>
+              <span style="font-size:12.5px;font-weight:600;color:rgba(245,245,247,.55);font-family:'Sora'">Журнал обработки</span>
+            </div>
+            <div data-an-log style="padding:14px 16px;display:flex;flex-direction:column;gap:7px;height:148px;overflow:hidden;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px"></div>
+          </div>
+        </section>
+
+        <!-- ---------- REPORT ---------- -->
+        <section data-screen="report" data-screen-label="Отчёт" style="display:none;flex-direction:column;gap:20px">
+          <div class="pf-report-head" style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;padding:22px 24px;border-radius:22px;background:linear-gradient(135deg,rgba(94,92,230,.16),rgba(167,139,250,.07));border:1px solid rgba(94,92,230,.25)">
+            <div style="display:flex;align-items:center;gap:16px">
+              <div style="display:grid;place-items:center;width:52px;height:52px;border-radius:15px;background:rgba(48,209,88,.14);border:1px solid rgba(48,209,88,.35)">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg>
+              </div>
+              <div>
+                <div style="font-family:'Sora';font-weight:600;font-size:20px">Единый отчёт · 12 клиник</div>
+                <div style="font-size:13px;color:rgba(245,245,247,.5);margin-top:3px">Обработано 4 218 позиций · 8 файлов · за 2.3 сек</div>
+              </div>
+            </div>
+            <div class="pf-export-row" style="display:flex;gap:9px">
+              <button data-export="XLSX" data-press style="display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:11px;background:rgba(48,209,88,.12);border:1px solid rgba(48,209,88,.3);color:#5BE892;cursor:pointer;font-size:13.5px;font-weight:600;transition:all .2s" style-hover="background:rgba(48,209,88,.2)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 12-4-4m4 4 4-4M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>XLSX
+              </button>
+              <button data-export="CSV" data-press style="display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#F5F5F7;cursor:pointer;font-size:13.5px;font-weight:600;transition:all .2s" style-hover="background:rgba(255,255,255,.09)">CSV</button>
+              <button data-export="PDF" data-press style="display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#F5F5F7;cursor:pointer;font-size:13.5px;font-weight:600;transition:all .2s" style-hover="background:rgba(255,255,255,.09)">PDF</button>
+            </div>
+          </div>
+
+          <!-- stat tiles -->
+          <div class="pf-grid4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+              <div style="font-family:'Sora';font-weight:700;font-size:30px;margin-top:6px;letter-spacing:-.02em"><span data-rcount="4218" data-sep="1">0</span></div>
+            </div>
+            <div style="padding:20px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)">
+              <div style="font-size:12.5px;color:rgba(245,245,247,.45)">Клиник</div>
+              <div style="font-family:'Sora';font-weight:700;font-size:30px;margin-top:6px;letter-spacing:-.02em"><span data-rcount="12">0</span></div>
+            </div>
+            <div style="padding:20px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)">
+              <div style="font-size:12.5px;color:rgba(245,245,247,.45)">Средняя экономия</div>
+              <div style="font-family:'Sora';font-weight:700;font-size:30px;margin-top:6px;letter-spacing:-.02em;color:#5BE892"><span data-rcount="34" data-suffix="%">0</span></div>
+            </div>
+            <div style="padding:20px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)">
+              <div style="font-size:12.5px;color:rgba(245,245,247,.45)">Время обработки</div>
+              <div style="font-family:'Sora';font-weight:700;font-size:30px;margin-top:6px;letter-spacing:-.02em"><span data-rcount="2.3" data-dec="1" data-suffix=" с">0</span></div>
+            </div>
+          </div>
+
+          <div class="pf-2col-report" style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px">
+            <!-- comparison table -->
+            <div style="border-radius:20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);overflow:hidden">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06)">
+                <div style="font-family:'Sora';font-weight:600;font-size:15.5px">Сравнение цен по услугам</div>
+                <span style="font-size:12px;color:rgba(245,245,247,.4)">лучшая цена выделена</span>
+              </div>
+              <div class="pf-tablewrap" style="padding:8px 10px">
+                <table style="width:100%;border-collapse:collapse">
+                  <thead><tr style="text-align:left">
+                    <th style="padding:10px 12px;font-size:11.5px;font-weight:600;color:rgba(245,245,247,.4);text-transform:uppercase;letter-spacing:.04em">Услуга</th>
+                    <th style="padding:10px 12px;font-size:11.5px;font-weight:600;color:rgba(245,245,247,.4);text-transform:uppercase;letter-spacing:.04em">Альфа</th>
+                    <th style="padding:10px 12px;font-size:11.5px;font-weight:600;color:rgba(245,245,247,.4);text-transform:uppercase;letter-spacing:.04em">Сити</th>
+                    <th style="padding:10px 12px;font-size:11.5px;font-weight:600;color:rgba(245,245,247,.4);text-transform:uppercase;letter-spacing:.04em">Здоровье+</th>
+                  </tr></thead>
+                  <tbody data-report-rows></tbody>
+                </table>
+              </div>
+            </div>
+            <!-- chart -->
+            <div style="border-radius:20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);padding:20px;display:flex;flex-direction:column">
+              <div style="font-family:'Sora';font-weight:600;font-size:15.5px">Разброс цен · МРТ</div>
+              <div style="font-size:12.5px;color:rgba(245,245,247,.45);margin-top:3px;margin-bottom:auto">по 12 клиникам, тыс. ₸</div>
+              <div data-report-chart style="display:flex;align-items:flex-end;gap:8px;height:170px;margin-top:18px"></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06)">
+                <div><div style="font-size:11.5px;color:rgba(245,245,247,.45)">Минимум</div><div style="font-size:15px;font-weight:700;color:#5BE892">14.9к ₸</div></div>
+                <div style="text-align:center"><div style="font-size:11.5px;color:rgba(245,245,247,.45)">Медиана</div><div style="font-size:15px;font-weight:700">19.4к ₸</div></div>
+                <div style="text-align:right"><div style="font-size:11.5px;color:rgba(245,245,247,.45)">Максимум</div><div style="font-size:15px;font-weight:700;color:#FF8B85">28.5к ₸</div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---------- SEARCH (clinic search) ---------- -->
+        <section data-screen="search" data-screen-label="Поиск клиник" style="display:none;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;gap:12px;padding:15px 18px;border-radius:16px;background:rgba(12,12,18,.7);border:1px solid rgba(255,255,255,.1);transition:border-color .25s,box-shadow .25s" data-search-box>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="rgba(245,245,247,.45)" stroke-width="1.7"/><path d="m16 16 4 4" stroke="rgba(245,245,247,.45)" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <input data-clinic-search placeholder="Введите название клиники, город или услугу…" style="flex:1;background:transparent;border:none;outline:none;color:#F5F5F7;font-size:16px;font-weight:500"/>
+            <span style="font-size:12px;color:rgba(245,245,247,.3);border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:3px 8px">⌘K</span>
+          </div>
+          <div data-clinic-results style="display:flex;flex-direction:column;gap:10px"></div>
+        </section>
+
+        <!-- ---------- ADMIN ---------- -->
+        <section data-screen="admin" data-screen-label="Аналитика" style="display:none;flex-direction:column;gap:20px">
+          <div class="pf-grid4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+            <div style="padding:20px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)">
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12.5px;color:rgba(245,245,247,.45)">Пользователей</span><span style="font-size:11px;font-weight:600;color:#5BE892">+12%</span></div>
+              <div style="font-family:'Sora';font-weight:700;font-size:30px;margin-top:6px"><span data-rcount="1840" data-sep="1">0</span></div>
+            </div>
+            <div style="padding:20px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)">
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12.5px;color:rgba(245,245,247,.45)">Обработок сегодня</span><span style="font-size:11px;font-weight:600;color:#5BE892">+8%</span></div>
+              <div style="font-family:'Sora';font-weight:700;font-size:30px;margin-top:6px"><span data-rcount="326">0</span></div>
+            </div>
+            <div style="padding:20px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)">
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12.5px;color:rgba(245,245,247,.45)">Клиник в базе</span><span style="font-size:11px;font-weight:600;color:#5BE892">+3%</span></div>
+              <div style="font-family:'Sora';font-weight:700;font-size:30px;margin-top:6px"><span data-rcount="1240" data-sep="1">0</span></div>
+            </div>
+            <div style="padding:20px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)">
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12.5px;color:rgba(245,245,247,.45)">Аптайм</span><span style="font-size:11px;font-weight:600;color:#5BE892">30 дн</span></div>
+              <div style="font-family:'Sora';font-weight:700;font-size:30px;margin-top:6px"><span data-rcount="99.98" data-dec="2" data-suffix="%">0</span></div>
+            </div>
+          </div>
+
+          <div class="pf-2col-admin" style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px">
+            <div style="border-radius:20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);padding:22px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="font-family:'Sora';font-weight:600;font-size:16px">Обработок за неделю</div>
+                <div style="display:flex;gap:10px;font-size:12px;color:rgba(245,245,247,.45)"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:3px;background:#6E8BFF"></span>задачи</span></div>
+              </div>
+              <div data-admin-chart style="display:flex;align-items:flex-end;gap:14px;height:200px;margin-top:24px"></div>
+              <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:11.5px;color:rgba(245,245,247,.4)"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
+            </div>
+            <div style="border-radius:20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);padding:22px">
+              <div style="font-family:'Sora';font-weight:600;font-size:16px;margin-bottom:18px">Состояние системы</div>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px"><span style="color:rgba(245,245,247,.6)">Точность OCR</span><span style="font-weight:700;color:#5BE892">99.4%</span></div><div style="height:7px;border-radius:4px;background:rgba(255,255,255,.06)"><div data-bar="99" style="height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,#6E8BFF,#A78BFA);transition:width 1.1s cubic-bezier(.16,1,.3,1)"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px"><span style="color:rgba(245,245,247,.6)">Загрузка очереди</span><span style="font-weight:700">42%</span></div><div style="height:7px;border-radius:4px;background:rgba(255,255,255,.06)"><div data-bar="42" style="height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,#6E8BFF,#A78BFA);transition:width 1.1s cubic-bezier(.16,1,.3,1)"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px"><span style="color:rgba(245,245,247,.6)">Хранилище</span><span style="font-weight:700">68%</span></div><div style="height:7px;border-radius:4px;background:rgba(255,255,255,.06)"><div data-bar="68" style="height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,#6E8BFF,#A78BFA);transition:width 1.1s cubic-bezier(.16,1,.3,1)"></div></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="border-radius:20px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);overflow:hidden" class="pf-tablewrap">
+            <div style="padding:16px 22px;border-bottom:1px solid rgba(255,255,255,.06);font-family:'Sora';font-weight:600;font-size:16px">Последние обработки</div>
+            <table style="width:100%;border-collapse:collapse">
+              <thead><tr>
+                <th style="text-align:left;padding:11px 22px;font-size:11.5px;font-weight:600;color:rgba(245,245,247,.4);text-transform:uppercase;letter-spacing:.04em">Пользователь</th>
+                <th style="text-align:left;padding:11px 14px;font-size:11.5px;font-weight:600;color:rgba(245,245,247,.4);text-transform:uppercase;letter-spacing:.04em">Файлов</th>
+                <th style="text-align:left;padding:11px 14px;font-size:11.5px;font-weight:600;color:rgba(245,245,247,.4);text-transform:uppercase;letter-spacing:.04em">Позиций</th>
+                <th style="text-align:left;padding:11px 14px;font-size:11.5px;font-weight:600;color:rgba(245,245,247,.4);text-transform:uppercase;letter-spacing:.04em">Статус</th>
+                <th style="text-align:right;padding:11px 22px;font-size:11.5px;font-weight:600;color:rgba(245,245,247,.4);text-transform:uppercase;letter-spacing:.04em">Время</th>
+              </tr></thead>
+              <tbody data-admin-jobs></tbody>
+            </table>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- mobile bottom nav -->
+    <nav data-mobnav style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:30;align-items:stretch;justify-content:space-around;gap:2px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));background:rgba(14,14,20,.86);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid rgba(255,255,255,.08)">
+      <button data-navm="upload" data-goto="upload" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 4px;border:none;background:transparent;color:#9DB0FF;cursor:pointer;border-radius:12px;transition:color .2s">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 20h14"/></svg>
+        <span style="font-size:10.5px;font-weight:600">Загрузка</span>
+      </button>
+      <button data-navm="report" data-goto="report" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 4px;border:none;background:transparent;color:rgba(245,245,247,.5);cursor:pointer;border-radius:12px;transition:color .2s">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
+        <span style="font-size:10.5px;font-weight:600">Отчёт</span>
+      </button>
+      <button data-navm="search" data-goto="search" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 4px;border:none;background:transparent;color:rgba(245,245,247,.5);cursor:pointer;border-radius:12px;transition:color .2s">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
+        <span style="font-size:10.5px;font-weight:600">Поиск</span>
+      </button>
+      <button data-navm="admin" data-goto="admin" data-admin-only style="flex:1;display:none;flex-direction:column;align-items:center;gap:4px;padding:7px 4px;border:none;background:transparent;color:rgba(245,245,247,.5);cursor:pointer;border-radius:12px;transition:color .2s">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h4l2-6 3 12 2.5-8 1.5 4h5"/></svg>
+        <span style="font-size:10.5px;font-weight:600">Аналитика</span>
+      </button>
+      <a href="PriceFlow%20Landing.dc.html" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 4px;color:rgba(245,245,247,.5);text-decoration:none;border-radius:12px">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+        <span style="font-size:10.5px;font-weight:600">Сайт</span>
+      </a>
+    </nav>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:880}}">
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.screen='login';
+    this.role='user';
+    this.bioTarget='fp';
+    this.files=[];
+    this.authScreens=['login','register','biometric'];
+    this.titles={
+      upload:['Новый анализ прайсов','Загрузите архивы прайсов клиник-партнёров'],
+      analyzing:['Обработка','PriceFlow распознаёт и сравнивает позиции'],
+      report:['Единый отчёт','Результат обработки готов к экспорту'],
+      search:['Поиск по клиникам','База клиник и внешние источники'],
+      admin:['Аналитика платформы','Статистика и состояние системы']
+    };
+    this.reportRows=[
+      {s:'МРТ головного мозга',a:'14 900',c:'18 200',z:'21 500',best:'a'},
+      {s:'УЗИ брюшной полости',a:'11 200',c:'9 400',z:'12 800',best:'c'},
+      {s:'Приём терапевта',a:'6 500',c:'7 100',z:'5 200',best:'z'},
+      {s:'Общий анализ крови',a:'3 800',c:'3 200',z:'4 100',best:'c'},
+      {s:'Рентген грудной клетки',a:'5 400',c:'6 800',z:'4 900',best:'z'},
+      {s:'Консультация кардиолога',a:'9 800',c:'8 900',z:'11 200',best:'c'}
+    ];
+    this.clinics=[
+      {n:'Клиника «Альфа»',m:'Алматы · Диагностика, МРТ · 312 услуг',p:'9 400',i:'А',g:'linear-gradient(135deg,#6E8BFF,#5E5CE6)',k:'альфа almaty алматы мрт диагностика alfa'},
+      {n:'Медцентр «Сити»',m:'Астана · Терапия, УЗИ · 540 услуг',p:'7 100',i:'С',g:'linear-gradient(135deg,#A78BFA,#5E5CE6)',k:'сити city астана терапия узи'},
+      {n:'«Здоровье+»',m:'Шымкент · Стоматология · 198 услуг',p:'5 200',i:'З',g:'linear-gradient(135deg,#6E8BFF,#A78BFA)',k:'здоровье health шымкент shymkent стоматология'},
+      {n:'«Медикер»',m:'Караганда · Кардиология · 421 услуга',p:'11 800',i:'М',g:'linear-gradient(135deg,#5E5CE6,#7E7BFF)',k:'медикер mediker караганда karaganda кардиология'},
+      {n:'«Сұңқар Мед»',m:'Алматы · Педиатрия · 276 услуг',p:'6 300',i:'С',g:'linear-gradient(135deg,#6E8BFF,#5E5CE6)',k:'сункар sunqar алматы almaty педиатрия'}
+    ];
+    this.jobs=[
+      {u:'Алия Нурлан',f:8,p:'4 218',st:'Готово',t:'2 мин назад'},
+      {u:'Данияр К.',f:3,p:'1 540',st:'Готово',t:'14 мин назад'},
+      {u:'Жанна Б.',f:12,p:'6 902',st:'Обработка',t:'сейчас'},
+      {u:'Тимур А.',f:5,p:'2 110',st:'Готово',t:'42 мин назад'},
+      {u:'Мадина С.',f:2,p:'880',st:'Ошибка',t:'1 ч назад'}
+    ];
+    this.demoSet=[
+      {name:'Прайс_Альфа_2026.pdf',size:'2.4 МБ',type:'pdf'},
+      {name:'Сити_услуги.xlsx',size:'860 КБ',type:'xls'},
+      {name:'Здоровье_плюс_скан.jpg',size:'3.1 МБ',type:'img'},
+      {name:'Медикер_прайс.csv',size:'124 КБ',type:'csv'}
+    ];
+  }
+
+  componentDidMount(){
+    this.root=document.getElementById('app-root')||document;
+    setTimeout(()=>{
+      this.wireNav();
+      this.wireFields();
+      this.wireBio();
+      this.wireUpload();
+      this.wireRoles();
+      this.wireExport();
+      this.wireClinicSearch();
+      this.renderClinics('');
+      this.show('login',true);
+    },30);
+  }
+
+  q(s){return Array.from((this.root||document).querySelectorAll(s));}
+  one(s){return (this.root||document).querySelector(s);}
+
+  wireNav(){
+    this.q('[data-goto]').forEach(el=>{
+      el.addEventListener('click',()=>{
+        const bt=el.getAttribute('data-bio-target');
+        if(bt) this.bioTarget=bt;
+        this.show(el.getAttribute('data-goto'));
+      });
+    });
+  }
+
+  show(name,instant){
+    const authWrap=this.one('[data-wrap="auth"]');
+    const appWrap=this.one('[data-wrap="app"]');
+    const isAuth=this.authScreens.indexOf(name)!==-1;
+    authWrap.style.display=isAuth?'flex':'none';
+    appWrap.style.display=isAuth?'none':'block';
+    if(this.root&&this.root.setAttribute) this.root.setAttribute('data-view',isAuth?'auth':'app');
+
+    const container=isAuth?authWrap:this.one('main');
+    const screens=Array.from(container.querySelectorAll('[data-screen]'));
+    const next=screens.find(s=>s.getAttribute('data-screen')===name);
+    if(!next) return;
+    const disp=isAuth?'block':'flex';
+
+    screens.forEach(s=>{ if(s!==next) s.style.display='none'; });
+    next.style.display=disp;
+    if(!instant){
+      next.style.opacity='0';
+      next.style.transform='translateY(14px)';
+      next.style.transition='none';
+      void next.offsetWidth;
+      next.style.transition='opacity .5s cubic-bezier(.16,1,.3,1),transform .55s cubic-bezier(.16,1,.3,1)';
+      requestAnimationFrame(()=>{ next.style.opacity='1'; next.style.transform='none'; });
+    } else {
+      next.style.opacity='1'; next.style.transform='none';
+    }
+    this.screen=name;
+
+    if(!isAuth){
+      const t=this.titles[name]||['',''];
+      const tt=this.one('[data-topbar-title]'); const ts=this.one('[data-topbar-sub]');
+      if(tt) tt.textContent=t[0]; if(ts) ts.textContent=t[1];
+      this.q('[data-nav]').forEach(b=>{
+        const on=b.getAttribute('data-nav')===name;
+        b.style.background=on?'rgba(94,92,230,.14)':'transparent';
+        b.style.border=on?'1px solid rgba(94,92,230,.3)':'1px solid transparent';
+        b.style.color=on?'#F5F5F7':'rgba(245,245,247,.6)';
+      });
+      this.q('[data-navm]').forEach(b=>{
+        const on=b.getAttribute('data-navm')===name;
+        b.style.color=on?'#9DB0FF':'rgba(245,245,247,.5)';
+        b.style.background=on?'rgba(94,92,230,.12)':'transparent';
+      });
+    }
+
+    if(name==='biometric') this.resetBio();
+    if(name==='analyzing') this.runAnalysis();
+    if(name==='report') this.renderReport();
+    if(name==='admin') this.renderAdmin();
+  }
+
+  wireFields(){
+    this.q('[data-field]').forEach(inp=>{
+      inp.addEventListener('focus',()=>{ inp.style.borderColor='rgba(94,92,230,.6)'; inp.style.boxShadow='0 0 0 4px rgba(94,92,230,.12)'; });
+      inp.addEventListener('blur',()=>{ inp.style.borderColor='rgba(255,255,255,.1)'; inp.style.boxShadow='none'; });
+    });
+    // register role pick
+    this.q('[data-role-opt]').forEach(b=>{
+      b.addEventListener('click',()=>{
+        this.q('[data-role-opt]').forEach(o=>{
+          const on=o===b;
+          o.style.background=on?'rgba(94,92,230,.12)':'rgba(255,255,255,.04)';
+          o.style.borderColor=on?'rgba(94,92,230,.45)':'rgba(255,255,255,.1)';
+          const svg=o.querySelector('svg'); if(svg) svg.style.stroke=on?'#9DB0FF':'rgba(245,245,247,.6)';
+        });
+        this.setRole(b.getAttribute('data-role-opt'));
+      });
+    });
+  }
+
+  // ---------- BIOMETRIC ----------
+  wireBio(){
+    this.q('[data-bio-tab]').forEach(t=>{
+      t.addEventListener('click',()=>this.setBioTarget(t.getAttribute('data-bio-tab')));
+    });
+    this.q('[data-bio-target]').forEach(b=>{
+      b.addEventListener('click',()=>{ this.bioTarget=b.getAttribute('data-bio-target'); });
+    });
+    const act=this.one('[data-bio-action]');
+    if(act) act.addEventListener('click',()=>this.scanBio());
+  }
+  setBioTarget(t){
+    this.bioTarget=t;
+    this.q('[data-bio-tab]').forEach(b=>{
+      const on=b.getAttribute('data-bio-tab')===t;
+      b.style.background=on?'rgba(94,92,230,.9)':'transparent';
+      b.style.color=on?'#fff':'rgba(245,245,247,.55)';
+    });
+    this.q('[data-bio-vis]').forEach(v=>{ v.style.display=v.getAttribute('data-bio-vis')===t?'grid':'none'; });
+    const title=this.one('[data-bio-title]'); const desc=this.one('[data-bio-desc]');
+    if(t==='fp'){ title.textContent='Настройка отпечатка'; desc.textContent='Приложите палец к сенсору, чтобы сохранить отпечаток для входа.'; }
+    else { title.textContent='Настройка Face ID'; desc.textContent='Посмотрите в камеру — система запомнит черты лица для входа.'; }
+  }
+  resetBio(){
+    this.setBioTarget(this.bioTarget||'fp');
+    const ring=this.one('[data-bio-ring]'); if(ring){ ring.style.transition='none'; ring.style.strokeDashoffset='490'; }
+    const check=this.one('[data-bio-check]'); if(check){ check.style.display='none'; check.style.opacity='0'; check.style.transform='scale(.6)'; }
+    this.q('[data-bio-vis]').forEach(v=>{ if(v.getAttribute('data-bio-vis')===this.bioTarget) v.style.display='grid'; });
+    const status=this.one('[data-bio-status]');
+    if(status){ status.innerHTML='<span style="width:7px;height:7px;border-radius:50%;background:#6E8BFF;animation:pulseDot 1.6s infinite"></span>Ожидание…'; status.style.background='rgba(255,255,255,.05)'; status.style.borderColor='rgba(255,255,255,.1)'; status.style.color='rgba(245,245,247,.6)'; }
+    const act=this.one('[data-bio-action]'); if(act){ act.style.opacity='1'; act.style.pointerEvents='auto'; act.textContent='Сканировать'; }
+  }
+  scanBio(){
+    const ring=this.one('[data-bio-ring]');
+    const scan=this.one('[data-bio-vis="'+this.bioTarget+'"] [data-bio-scan]');
+    const status=this.one('[data-bio-status]');
+    const act=this.one('[data-bio-action]');
+    if(act){ act.style.opacity='.5'; act.style.pointerEvents='none'; act.textContent='Сканирование…'; }
+    if(status){ status.innerHTML='<span style="width:7px;height:7px;border-radius:50%;background:#A78BFA;animation:pulseDot 1s infinite"></span>Сканирование…'; }
+    // scan line animation
+    if(scan){
+      scan.style.opacity='1';
+      const y0=this.bioTarget==='fp'?20:30, y1=this.bioTarget==='fp'?94:88;
+      let dir=1,y=y0,reps=0;
+      this._scanTimer=setInterval(()=>{
+        y+=dir*3.2;
+        if(y>=y1){dir=-1;reps++;} if(y<=y0){dir=1;}
+        scan.setAttribute('y',y);
+        if(reps>=2){ clearInterval(this._scanTimer); scan.style.opacity='0'; }
+      },24);
+    }
+    if(ring){
+      ring.style.transition='none'; ring.style.strokeDashoffset='490'; void ring.getBoundingClientRect();
+      ring.style.transition='stroke-dashoffset 1.9s cubic-bezier(.4,0,.2,1)';
+      requestAnimationFrame(()=>{ ring.style.strokeDashoffset='0'; });
+    }
+    setTimeout(()=>this.bioSuccess(),2050);
+  }
+  bioSuccess(){
+    const vis=this.one('[data-bio-vis="'+this.bioTarget+'"]');
+    const check=this.one('[data-bio-check]');
+    const status=this.one('[data-bio-status]');
+    if(vis) vis.style.display='none';
+    if(check){ check.style.display='grid'; requestAnimationFrame(()=>{ check.style.opacity='1'; check.style.transform='scale(1)'; }); }
+    if(status){ status.innerHTML='<span style="width:7px;height:7px;border-radius:50%;background:#30D158;box-shadow:0 0 8px #30D158"></span>Успешно · доступ разрешён'; status.style.background='rgba(48,209,88,.12)'; status.style.borderColor='rgba(48,209,88,.3)'; status.style.color='#5BE892'; }
+    const act=this.one('[data-bio-action]');
+    if(act){ act.style.opacity='1'; act.style.pointerEvents='auto'; act.textContent='Войти в PriceFlow'; act.onclick=()=>this.show('upload'); }
+    setTimeout(()=>{ if(this.screen==='biometric') this.show('upload'); },1400);
+  }
+
+  // ---------- ROLES ----------
+  wireRoles(){
+    this.q('[data-setrole]').forEach(b=>b.addEventListener('click',()=>this.setRole(b.getAttribute('data-setrole'))));
+  }
+  setRole(r){
+    this.role=r;
+    this.q('[data-setrole]').forEach(b=>{
+      const on=b.getAttribute('data-setrole')===r;
+      b.style.background=on?'rgba(94,92,230,.9)':'transparent';
+      b.style.color=on?'#fff':'rgba(245,245,247,.5)';
+    });
+    const rl=this.one('[data-role-label]'); if(rl) rl.textContent=r==='admin'?'Администратор':'Пользователь';
+    this.q('[data-admin-only]').forEach(el=>{ el.style.display=r==='admin'?'flex':'none'; });
+    if(r==='user' && this.screen==='admin') this.show('upload');
+  }
+
+  // ---------- UPLOAD ----------
+  wireUpload(){
+    const dz=this.one('[data-dropzone]');
+    const input=this.one('[data-file-input]');
+    if(dz&&input){
+      dz.addEventListener('click',()=>input.click());
+      dz.addEventListener('dragover',e=>{ e.preventDefault(); dz.style.borderColor='rgba(94,92,230,.9)'; dz.style.background='rgba(94,92,230,.12)'; dz.style.transform='scale(1.005)'; });
+      dz.addEventListener('dragleave',()=>{ dz.style.borderColor='rgba(94,92,230,.4)'; dz.style.background='rgba(94,92,230,.05)'; dz.style.transform='none'; });
+      dz.addEventListener('drop',e=>{
+        e.preventDefault(); dz.style.borderColor='rgba(94,92,230,.4)'; dz.style.background='rgba(94,92,230,.05)'; dz.style.transform='none';
+        const fs=Array.from(e.dataTransfer.files||[]);
+        if(fs.length) fs.forEach(f=>this.addFile({name:f.name,size:this.fmtSize(f.size),type:this.typeOf(f.name)}));
+        else this.demoSet.forEach(f=>this.addFile(f));
+      });
+      input.addEventListener('change',()=>{
+        Array.from(input.files||[]).forEach(f=>this.addFile({name:f.name,size:this.fmtSize(f.size),type:this.typeOf(f.name)}));
+        input.value='';
+      });
+    }
+    const demo=this.one('[data-demo-files]');
+    if(demo) demo.addEventListener('click',()=>{ this.demoSet.forEach((f,i)=>setTimeout(()=>this.addFile(f),i*90)); });
+    const run=this.one('[data-run-btn]');
+    if(run) run.addEventListener('click',()=>{ if(this.files.length) this.show('analyzing'); });
+  }
+  typeOf(n){ n=n.toLowerCase(); if(n.endsWith('.pdf'))return'pdf'; if(n.endsWith('.csv'))return'csv'; if(n.match(/\.(xlsx|xls)$/))return'xls'; if(n.match(/\.(png|jpg|jpeg)$/))return'img'; if(n.match(/\.(docx|rtf)$/))return'doc'; return'file'; }
+  fmtSize(b){ if(b>1048576) return (b/1048576).toFixed(1)+' МБ'; if(b>1024) return Math.round(b/1024)+' КБ'; return b+' Б'; }
+  fileIcon(t){
+    const c='#9DB0FF';
+    const map={
+      pdf:'<path d="M7 3h7l4 4v14H7z" stroke="'+c+'" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="'+c+'" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 14h5M10 17h3" stroke="'+c+'" stroke-width="1.5" stroke-linecap="round"/>',
+      xls:'<rect x="4" y="5" width="16" height="14" rx="2.5" stroke="'+c+'" stroke-width="1.6"/><path d="M4 9.8h16M4 14.3h16M10.5 5v14M15.5 5v14" stroke="'+c+'" stroke-width="1.1" opacity=".7"/>',
+      csv:'<rect x="4" y="5" width="16" height="14" rx="2.5" stroke="'+c+'" stroke-width="1.6"/><path d="M7.3 9h9.4M7.3 12h9.4M7.3 15h6" stroke="'+c+'" stroke-width="1.4" stroke-linecap="round"/>',
+      img:'<rect x="4" y="5" width="16" height="14" rx="2.5" stroke="'+c+'" stroke-width="1.6"/><circle cx="9" cy="10" r="1.6" fill="'+c+'"/><path d="m5 17 4.4-3.7 3.4 2.5 2.8-2.2L19 16.3" stroke="'+c+'" stroke-width="1.5" stroke-linejoin="round"/>',
+      doc:'<path d="M7 3h7l4 4v14H7z" stroke="'+c+'" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v4h4" stroke="'+c+'" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 12h5M10 15h3" stroke="'+c+'" stroke-width="1.4" stroke-linecap="round"/>',
+      file:'<path d="M7 3h7l4 4v14H7z" stroke="'+c+'" stroke-width="1.6" stroke-linejoin="round"/>'
+    };
+    return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none">'+(map[t]||map.file)+'</svg>';
+  }
+  addFile(f){
+    this.files.push(f);
+    const list=this.one('[data-file-list]');
+    const empty=this.one('[data-file-empty]');
+    if(empty) empty.style.display='none';
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);animation:fadeUpItem .4s cubic-bezier(.16,1,.3,1) both';
+    row.innerHTML='<span style="display:grid;place-items:center;width:40px;height:40px;border-radius:11px;background:rgba(94,92,230,.12);border:1px solid rgba(94,92,230,.25);flex-shrink:0">'+this.fileIcon(f.type)+'</span>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+f.name+'</div><div style="font-size:12px;color:rgba(245,245,247,.45);margin-top:2px">'+f.size+' · готов к обработке</div></div>'+
+      '<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;background:rgba(48,209,88,.1);border:1px solid rgba(48,209,88,.25);font-size:11.5px;font-weight:600;color:#5BE892"><span style="width:6px;height:6px;border-radius:50%;background:#30D158"></span>OK</span>'+
+      '<button data-remove style="display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(245,245,247,.5);cursor:pointer">✕</button>';
+    list.appendChild(row);
+    row.querySelector('[data-remove]').addEventListener('click',()=>{
+      const idx=this.files.indexOf(f); if(idx>-1) this.files.splice(idx,1);
+      row.style.transition='opacity .25s,transform .25s'; row.style.opacity='0'; row.style.transform='translateX(10px)';
+      setTimeout(()=>{ row.remove(); this.refreshUpload(); },240);
+    });
+    this.refreshUpload();
+  }
+  refreshUpload(){
+    const cnt=this.one('[data-file-count]'); if(cnt) cnt.textContent='('+this.files.length+')';
+    const empty=this.one('[data-file-empty]'); if(empty && this.files.length===0) empty.style.display='block';
+    const run=this.one('[data-run-btn]');
+    if(run){
+      if(this.files.length){
+        run.disabled=false; run.style.cursor='pointer';
+        run.style.background='linear-gradient(135deg,#6E8BFF,#5E5CE6)'; run.style.color='#fff';
+        run.style.boxShadow='0 10px 30px rgba(94,92,230,.4)';
+      } else {
+        run.disabled=true; run.style.cursor='not-allowed';
+        run.style.background='rgba(94,92,230,.3)'; run.style.color='rgba(255,255,255,.5)';
+        run.style.boxShadow='none';
+      }
+    }
+  }
+
+  // ---------- ANALYZING ----------
+  runAnalysis(){
+    const ring=this.one('[data-an-ring]');
+    const pct=this.one('[data-an-percent]');
+    const phase=this.one('[data-an-phase]');
+    const log=this.one('[data-an-log]');
+    const steps=this.q('[data-an-step]');
+    const CIRC=553;
+    if(log) log.innerHTML='';
+    steps.forEach((s,i)=>{
+      const on=i===0;
+      s.style.background=on?'rgba(94,92,230,.14)':'rgba(255,255,255,.04)';
+      s.style.borderColor=on?'rgba(94,92,230,.35)':'rgba(255,255,255,.08)';
+      const dot=s.querySelector('[data-dot]'); dot.innerHTML=''; dot.style.background=on?'#6E8BFF':'rgba(245,245,247,.25)';
+      const lbl=s.querySelector('span:last-child'); lbl.style.color=on?'#F5F5F7':'rgba(245,245,247,.65)';
+    });
+    const phases=['Загрузка','Распознавание','Нормализация','Сравнение'];
+    const logs=[
+      'Принято 8 файлов · 2 PDF, 3 XLSX, 2 скан, 1 CSV',
+      'OCR · скан «Здоровье_плюс» → 312 строк',
+      'Распознаны заголовки таблиц · 96 колонок',
+      'Нормализация единиц: ₸, тенге, KZT → ₸',
+      'Сопоставлено 1 204 названия услуг',
+      'Дедупликация · удалено 86 дублей',
+      'Сравнение цен по 12 клиникам…',
+      'Найдена лучшая цена для 4 218 позиций',
+      'Сборка единого отчёта · готово'
+    ];
+    let p=0, li=0;
+    const markStep=(idx)=>{
+      steps.forEach((s,i)=>{
+        const done=i<idx, active=i===idx;
+        s.style.background=(active||done)?'rgba(94,92,230,.14)':'rgba(255,255,255,.04)';
+        s.style.borderColor=(active||done)?'rgba(94,92,230,.35)':'rgba(255,255,255,.08)';
+        const dot=s.querySelector('[data-dot]');
+        const lbl=s.querySelector('span:last-child');
+        if(done){ dot.style.background='#30D158'; dot.innerHTML='<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2 5 8.5l4.5-5" stroke="#08080C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; }
+        else if(active){ dot.style.background='#6E8BFF'; dot.innerHTML=''; }
+        else { dot.style.background='rgba(245,245,247,.25)'; dot.innerHTML=''; }
+        lbl.style.color=(active||done)?'#F5F5F7':'rgba(245,245,247,.65)';
+      });
+    };
+    const addLog=(txt,ok)=>{
+      if(!log) return;
+      const line=document.createElement('div');
+      line.style.cssText='display:flex;align-items:center;gap:9px;animation:logIn .3s ease both;color:rgba(245,245,247,.7)';
+      line.innerHTML='<span style="color:'+(ok?'#5BE892':'#7E7BFF')+'">'+(ok?'✓':'›')+'</span><span>'+txt+'</span>';
+      log.appendChild(line);
+      while(log.children.length>6) log.removeChild(log.firstChild);
+    };
+    clearInterval(this._anTimer);
+    this._anTimer=setInterval(()=>{
+      p+=Math.random()*3.4+1.4;
+      if(p>=100){ p=100; }
+      const off=CIRC-(CIRC*p/100);
+      if(ring) ring.style.strokeDashoffset=off;
+      if(pct) pct.textContent=Math.round(p)+'%';
+      const stepIdx=Math.min(3,Math.floor(p/25));
+      if(phase) phase.textContent=phases[stepIdx];
+      markStep(p>=100?4:stepIdx);
+      const targetLogs=Math.floor(p/100*logs.length);
+      while(li<targetLogs && li<logs.length){ addLog(logs[li], li<targetLogs-0); li++; }
+      if(p>=100){
+        clearInterval(this._anTimer);
+        while(li<logs.length){ addLog(logs[li],true); li++; }
+        markStep(4);
+        if(phase) phase.textContent='Готово';
+        setTimeout(()=>{ if(this.screen==='analyzing') this.show('report'); },900);
+      }
+    },95);
+  }
+
+  // ---------- REPORT ----------
+  renderReport(){
+    // table
+    const tb=this.one('[data-report-rows]');
+    if(tb){
+      tb.innerHTML='';
+      const cell=(v,best)=>'<td style="padding:11px 12px;font-size:13.5px;font-weight:'+(best?'700':'500')+';color:'+(best?'#5BE892':'rgba(245,245,247,.7)')+'">'+(best?'<span style=\"display:inline-flex;align-items:center;gap:6px\"><span style=\"width:6px;height:6px;border-radius:50%;background:#30D158;box-shadow:0 0 6px #30D158\"></span>':'')+v+' ₸'+(best?'</span>':'')+'</td>';
+      this.reportRows.forEach((r,i)=>{
+        const tr=document.createElement('tr');
+        tr.style.cssText='border-top:1px solid rgba(255,255,255,.05);animation:fadeUpItem .4s '+(i*55)+'ms cubic-bezier(.16,1,.3,1) both';
+        tr.innerHTML='<td style="padding:11px 12px;font-size:13.5px;font-weight:600">'+r.s+'</td>'+cell(r.a,r.best==='a')+cell(r.c,r.best==='c')+cell(r.z,r.best==='z');
+        tb.appendChild(tr);
+      });
+    }
+    // chart
+    const chart=this.one('[data-report-chart]');
+    if(chart){
+      chart.innerHTML='';
+      const vals=[20,24,28,15,22,19,26,17,21,23,18,25];
+      const max=Math.max(...vals);
+      vals.forEach((v,i)=>{
+        const isMin=v===Math.min(...vals);
+        const col=document.createElement('div');
+        col.style.cssText='flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%';
+        const bar=document.createElement('div');
+        bar.style.cssText='width:100%;height:0;border-radius:5px 5px 2px 2px;background:'+(isMin?'linear-gradient(180deg,#5BE892,#1F8A5B)':'linear-gradient(180deg,rgba(110,139,255,.85),rgba(94,92,230,.3))')+';transition:height .8s cubic-bezier(.16,1,.3,1) '+(i*45)+'ms';
+        if(isMin) bar.style.boxShadow='0 0 16px rgba(48,209,88,.4)';
+        col.appendChild(bar); chart.appendChild(col);
+        requestAnimationFrame(()=>{ bar.style.height=(v/max*100)+'%'; });
+      });
+    }
+    this.animateCounters(this.one('[data-screen="report"]'));
+  }
+
+  // ---------- ADMIN ----------
+  renderAdmin(){
+    const chart=this.one('[data-admin-chart]');
+    if(chart){
+      chart.innerHTML='';
+      const vals=[120,180,150,240,290,170,210];
+      const max=Math.max(...vals);
+      vals.forEach((v,i)=>{
+        const col=document.createElement('div');
+        col.style.cssText='flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%';
+        const bar=document.createElement('div');
+        const peak=v===max;
+        bar.style.cssText='width:100%;height:0;border-radius:7px 7px 3px 3px;background:'+(peak?'linear-gradient(180deg,#A78BFA,#5E5CE6)':'linear-gradient(180deg,rgba(110,139,255,.8),rgba(94,92,230,.25))')+';transition:height .9s cubic-bezier(.16,1,.3,1) '+(i*70)+'ms';
+        if(peak) bar.style.boxShadow='0 0 20px rgba(94,92,230,.5)';
+        col.appendChild(bar); chart.appendChild(col);
+        requestAnimationFrame(()=>{ bar.style.height=(v/max*100)+'%'; });
+      });
+    }
+    // jobs
+    const jb=this.one('[data-admin-jobs]');
+    if(jb){
+      jb.innerHTML='';
+      const stColor={'Готово':['#5BE892','rgba(48,209,88,.12)','rgba(48,209,88,.3)'],'Обработка':['#9DB0FF','rgba(94,92,230,.14)','rgba(94,92,230,.3)'],'Ошибка':['#FF8B85','rgba(255,95,87,.12)','rgba(255,95,87,.3)']};
+      this.jobs.forEach((j,i)=>{
+        const c=stColor[j.st];
+        const tr=document.createElement('tr');
+        tr.style.cssText='border-top:1px solid rgba(255,255,255,.05);animation:fadeUpItem .4s '+(i*50)+'ms cubic-bezier(.16,1,.3,1) both';
+        tr.innerHTML='<td style="padding:13px 22px;font-size:13.5px;font-weight:600">'+j.u+'</td>'+
+          '<td style="padding:13px 14px;font-size:13.5px;color:rgba(245,245,247,.65)">'+j.f+'</td>'+
+          '<td style="padding:13px 14px;font-size:13.5px;color:rgba(245,245,247,.65)">'+j.p+'</td>'+
+          '<td style="padding:13px 14px"><span style="display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:8px;background:'+c[1]+';border:1px solid '+c[2]+';font-size:12px;font-weight:600;color:'+c[0]+'"><span style="width:6px;height:6px;border-radius:50%;background:'+c[0]+'"></span>'+j.st+'</span></td>'+
+          '<td style="padding:13px 22px;font-size:13px;color:rgba(245,245,247,.45);text-align:right">'+j.t+'</td>';
+        jb.appendChild(tr);
+      });
+    }
+    // bars
+    this.q('[data-bar]').forEach(b=>{ b.style.width='0'; requestAnimationFrame(()=>{ setTimeout(()=>{ b.style.width=b.getAttribute('data-bar')+'%'; },50); }); });
+    this.animateCounters(this.one('[data-screen="admin"]'));
+  }
+
+  animateCounters(scope){
+    if(!scope) return;
+    const els=Array.from(scope.querySelectorAll('[data-rcount]'));
+    els.forEach(el=>{
+      const target=parseFloat(el.getAttribute('data-rcount'));
+      const dec=parseInt(el.getAttribute('data-dec')||'0',10);
+      const sep=el.getAttribute('data-sep')==='1';
+      const suf=el.getAttribute('data-suffix')||'';
+      const dur=1400, start=performance.now();
+      const fmt=(v)=>{ let s=dec>0?v.toFixed(dec):String(Math.round(v)); if(sep){const p=s.split('.');p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,' ');s=p.join('.');} return s; };
+      const tick=(now)=>{ let p=Math.min((now-start)/dur,1); const e=1-Math.pow(1-p,3); el.textContent=fmt(target*e)+suf; if(p<1) requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  // ---------- CLINIC SEARCH ----------
+  wireClinicSearch(){
+    const inp=this.one('[data-clinic-search]');
+    const box=this.one('[data-search-box]');
+    if(box&&inp){
+      inp.addEventListener('focus',()=>{ box.style.borderColor='rgba(94,92,230,.6)'; box.style.boxShadow='0 0 0 4px rgba(94,92,230,.12)'; });
+      inp.addEventListener('blur',()=>{ box.style.borderColor='rgba(255,255,255,.1)'; box.style.boxShadow='none'; });
+    }
+    if(inp) inp.addEventListener('input',()=>this.renderClinics(inp.value.trim().toLowerCase()));
+  }
+  renderClinics(query){
+    const wrap=this.one('[data-clinic-results]');
+    if(!wrap) return;
+    wrap.innerHTML='';
+    const matched=this.clinics.filter(c=>!query||c.k.indexOf(query)!==-1||c.n.toLowerCase().indexOf(query)!==-1);
+    if(matched.length===0){
+      wrap.innerHTML='<div style="padding:30px;text-align:center;color:rgba(245,245,247,.4);font-size:15px;border-radius:16px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.015)">Ничего не найдено. Попробуйте другой запрос.</div>';
+      return;
+    }
+    matched.forEach((c,i)=>{
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:14px;padding:15px 18px;border-radius:15px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);transition:background .2s,border-color .2s,transform .2s;cursor:pointer;animation:fadeUpItem .4s '+(i*45)+'ms cubic-bezier(.16,1,.3,1) both';
+      row.innerHTML='<div style="display:grid;place-items:center;width:46px;height:46px;border-radius:13px;background:'+c.g+';font-family:\'Sora\';font-weight:700;font-size:18px;color:#fff;flex-shrink:0">'+c.i+'</div>'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15.5px">'+c.n+'</div><div style="font-size:13px;color:rgba(245,245,247,.45);margin-top:2px">'+c.m+'</div></div>'+
+        '<div style="text-align:right;flex-shrink:0"><div style="font-size:11.5px;color:rgba(245,245,247,.4)">от</div><div style="font-weight:700;font-size:15px;color:#5BE892">'+c.p+' ₸</div></div>'+
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(245,245,247,.3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';
+      row.addEventListener('mouseenter',()=>{ row.style.background='rgba(94,92,230,.08)'; row.style.borderColor='rgba(94,92,230,.35)'; row.style.transform='translateX(3px)'; });
+      row.addEventListener('mouseleave',()=>{ row.style.background='rgba(255,255,255,.025)'; row.style.borderColor='rgba(255,255,255,.07)'; row.style.transform='none'; });
+      wrap.appendChild(row);
+    });
+  }
+
+  // ---------- EXPORT (toast) ----------
+  wireExport(){
+    this.q('[data-export]').forEach(b=>{
+      b.addEventListener('click',()=>this.toast('Экспорт в '+b.getAttribute('data-export')+' начат'));
+    });
+  }
+  toast(msg){
+    let t=this.one('#pf-toast');
+    if(!t){
+      t=document.createElement('div'); t.id='pf-toast';
+      t.style.cssText='position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);z-index:200;display:flex;align-items:center;gap:10px;padding:13px 20px;border-radius:13px;background:rgba(20,20,28,.92);backdrop-filter:blur(18px);border:1px solid rgba(94,92,230,.4);box-shadow:0 16px 50px rgba(0,0,0,.5);font-size:14px;font-weight:600;color:#F5F5F7;opacity:0;transition:opacity .3s,transform .35s cubic-bezier(.16,1,.3,1)';
+      (this.root||document.body).appendChild(t);
+    }
+    t.innerHTML='<span style="display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:rgba(48,209,88,.16)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg></span>'+msg;
+    requestAnimationFrame(()=>{ t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)'; });
+    clearTimeout(this._toastTimer);
+    this._toastTimer=setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; },2200);
+  }
+
+  renderVals(){return {};}
+}
+</script>
+</body>
+</html>
