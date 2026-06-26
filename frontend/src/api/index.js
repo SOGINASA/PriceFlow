@@ -26,6 +26,25 @@ export const partnersApi = {
   services: (partnerId) => api.get(`/partners/${partnerId}/services`),
 };
 
+// --- Кабинет партнёра (самообслуживание клиники) ---
+// Эндпоинты, которые нужно добавить на бэкенде для роли "partner".
+// Сейчас данные ведутся во фронтовом сторе usePartnerStore (демо); при
+// появлении API заменить вызовы стора на эти методы.
+// При изменении цены бэкенд должен архивировать прежнюю в PriceItemHistory
+// (история цен по датам уже есть в модели — ТЗ 4.4 / 5).
+export const partnerSelfApi = {
+  // PATCH /partners/{id} — обновить профиль клиники (контакты, описание)
+  updateProfile: (partnerId, payload) => api.patch(`/partners/${partnerId}`, payload),
+  // POST /partners/{id}/items — добавить позицию прайса
+  addItem: (partnerId, payload) => api.post(`/partners/${partnerId}/items`, payload),
+  // PATCH /price-items/{itemId} — изменить цену (старая → в историю)
+  updatePrice: (itemId, payload) => api.patch(`/price-items/${itemId}`, payload),
+  // DELETE /price-items/{itemId} — удалить/деактивировать позицию
+  removeItem: (itemId) => api.delete(`/price-items/${itemId}`),
+  // GET /price-items/{itemId}/history — история цен позиции (видна всем)
+  priceHistory: (itemId) => api.get(`/price-items/${itemId}/history`),
+};
+
 // --- Поиск ---
 export const searchApi = {
   // GET /search?q= — полнотекстовый поиск по услугам и партнёрам

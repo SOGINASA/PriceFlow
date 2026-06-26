@@ -22,6 +22,14 @@ export function formatFileSize(bytes) {
   return `${bytes} Б`;
 }
 
+// Дата ISO (YYYY-MM-DD) → "01.06.2026". Пустое → "—".
+export function formatDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 // Определение типа файла по расширению (для иконок и парсера на бэке).
 export function fileTypeOf(name) {
   const n = name.toLowerCase();

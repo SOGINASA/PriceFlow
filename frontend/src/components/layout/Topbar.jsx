@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import useAuthStore from "../../store/useAuthStore";
 import useUIStore from "../../store/useUIStore";
+import { CLINICS } from "../../data/mock";
 import { SCREEN_META } from "./navItems";
 
 // ---------- Верхняя панель ----------
@@ -9,14 +10,22 @@ import { SCREEN_META } from "./navItems";
 // (аватар открывает профиль-шит). Учитывает safe-area сверху.
 export default function Topbar({ screen }) {
   const navigate = useNavigate();
-  const { user, role, setRole } = useAuthStore();
+  const { user, role, partnerId, setRole, enterPartner } = useAuthStore();
   const { openProfile, unreadCount } = useUIStore();
   const [title, subtitle] = SCREEN_META[screen] || SCREEN_META.upload;
 
-  // Смена роли. Уходя с админ-экрана в роль user — возвращаемся на загрузку.
+  // Смена роли (демо-переключатель). Партнёр привязывается к клинике и уходит
+  // в свой кабинет; остальные роли — на общую главную при необходимости.
   const changeRole = (next) => {
+    if (next === "partner") {
+      const cid = partnerId || "alpha";
+      const clinic = CLINICS.find((c) => c.id === cid);
+      enterPartner({ partnerId: cid, name: clinic?.name || "Клиника" });
+      navigate("/app/my-prices");
+      return;
+    }
     setRole(next);
-    if (next === "user" && screen === "admin") navigate("/app/upload");
+    if (role === "partner" || (next === "user" && screen === "admin")) navigate("/app/upload");
   };
 
   // Колокольчик с бейджем непрочитанных.
@@ -45,7 +54,7 @@ export default function Topbar({ screen }) {
       {/* Десктоп: роль + колокольчик */}
       <div className="hidden lg:flex items-center gap-[14px]">
         <div className="flex items-center gap-[3px] p-[3px] rounded-[11px] bg-white/5 border border-white/[.08]">
-          {[["user", "Пользователь"], ["admin", "Админ"]].map(([key, label]) => {
+          {[["user", "Пользователь"], ["partner", "Партнёр"], ["admin", "Админ"]].map(([key, label]) => {
             const on = role === key;
             return (
               <button
