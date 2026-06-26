@@ -60,9 +60,12 @@ class Config:
     # === Валидация цен ===
     PRICE_ANOMALY_PCT = float(os.environ.get('PRICE_ANOMALY_PCT', 0.50))  # отклонение >50% → аномалия
 
-    # === OCR ===
-    TESSERACT_CMD = os.environ.get('TESSERACT_CMD')  # путь к tesseract, если не в PATH
-    OCR_LANGS = os.environ.get('OCR_LANGS', 'rus+eng+kaz')
+    # === OCR (EasyOCR) ===
+    # Языки EasyOCR через запятую. Казахский отдельного кода не имеет, но русская
+    # модель покрывает кириллицу, поэтому по умолчанию ['ru','en'].
+    OCR_LANGS = [s.strip() for s in os.environ.get('OCR_LANGS', 'ru,en').split(',') if s.strip()]
+    OCR_GPU = os.environ.get('OCR_GPU', 'false').lower() in ('1', 'true', 'yes')
+    OCR_DPI = int(os.environ.get('OCR_DPI', 300))  # рендер PDF->картинка; 300 — чётче мелкий шрифт
 
     # === Внешний LLM/OCR провайдер (опционально, для извлечения и нормализации) ===
     GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')

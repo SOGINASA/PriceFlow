@@ -9,7 +9,7 @@
 - **Flask** + Flask-SQLAlchemy + Flask-Migrate + Flask-JWT-Extended
 - **PostgreSQL** (FTS, jsonb), SQLite — fallback для быстрого старта
 - **Celery + Redis** — очередь обработки документов
-- Извлечение: `pdfplumber` / `PyMuPDF`, `python-docx`, `openpyxl`, `pytesseract` (OCR)
+- Извлечение: `pdfplumber` / `PyMuPDF`, `python-docx`, `openpyxl`, `easyocr` (OCR сканов)
 - Нормализация: `rapidfuzz` (+ опц. `sentence-transformers`)
 
 ## Структура
@@ -48,7 +48,8 @@ python seed_data.py            # демо-справочник
 python app.py                  # http://localhost:5252/api
 ```
 
-> Для OCR нужен системный Tesseract (+ языки rus/kaz) и poppler. В Docker уже включены.
+> OCR работает на EasyOCR — системные бинари (Tesseract/poppler) не нужны. На первом
+> запуске EasyOCR один раз скачает веса моделей (~80 МБ на язык) в кэш, дальше — офлайн.
 > Без Redis загрузку архива можно обрабатывать синхронно: `POST /api/archives?sync=1`.
 
 ## Основные эндпоинты

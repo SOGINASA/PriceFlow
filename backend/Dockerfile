@@ -5,11 +5,12 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Системные зависимости для OCR/PDF: tesseract (+ языки) и poppler для pdf2image
+# Системные зависимости: сборка psycopg2 (gcc/libpq) и рантайм-либы для opencv,
+# которым пользуется EasyOCR. Tesseract/poppler больше не нужны — OCR на EasyOCR,
+# рендер PDF через PyMuPDF.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        tesseract-ocr tesseract-ocr-rus tesseract-ocr-kaz \
-        poppler-utils \
         gcc libpq-dev curl \
+        libglib2.0-0 libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
