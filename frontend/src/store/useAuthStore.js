@@ -2,19 +2,23 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 // ---------- Стор аутентификации ----------
-// Хранит текущего пользователя и его роль (user | admin). Роль управляет
-// доступом к админ-разделу. persist сохраняет сессию между перезагрузками.
-// При интеграции с бэкендом методы login/register заменяются на вызовы API,
-// которые возвращают токен и профиль пользователя.
+// Хранит текущего пользователя, роль (user | operator | admin) и JWT.
+// Роль управляет доступом к разделам (аналитика — admin, верификация —
+// operator/admin). persist сохраняет сессию между перезагрузками.
 
 const useAuthStore = create(
   persist(
     (set) => ({
-      user: null, // { name, email, organization }
-      role: "user", // "user" | "admin"
+      user: null, // { name, email }
+      role: "user", // "user" | "operator" | "admin"
+      token: null, // JWT с бэкенда (см. POST /api/admin/login)
       isAuthenticated: false,
 
-      // Демо-вход: помечаем сессию активной. TODO: заменить на authApi.login.
+      // Реальная сессия после входа через API.
+      setSession: ({ user, role = "user", token = null }) =>
+        set({ user, role, token, isAuthenticated: true }),
+
+      // Демо-вход (OAuth/биометрия — пока без бэкенда).
       login: (user = { name: "Алия Нурлан", email: "" }) =>
         set({ user, isAuthenticated: true }),
 
@@ -24,7 +28,7 @@ const useAuthStore = create(
 
       setRole: (role) => set({ role }),
 
-      logout: () => set({ user: null, isAuthenticated: false, role: "user" }),
+      logout: () => set({ user: null, isAuthenticated: false, role: "user", token: null }),
     }),
     { name: "medpartners-auth" }
   )

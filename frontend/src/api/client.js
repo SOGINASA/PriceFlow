@@ -2,6 +2,7 @@
 // Все запросы к бэкенду идут через эту обёртку. Базовый URL берётся из
 // переменной окружения REACT_APP_API_URL (см. .env.example), что позволяет
 // подключить реальный бэкенд без правки кода компонентов.
+import useAuthStore from "../store/useAuthStore";
 
 const BASE_URL = process.env.REACT_APP_API_URL || "/api";
 
@@ -12,11 +13,14 @@ async function request(path, { method = "GET", body, params, headers } = {}) {
     : "";
 
   const isFormData = body instanceof FormData;
+  // JWT оператора/админа (если выполнен вход) — для защищённых эндпоинтов.
+  const token = useAuthStore.getState?.().token;
   const res = await fetch(`${BASE_URL}${path}${query}`, {
     method,
     headers: {
       // FormData (загрузка файлов) сериализуется браузером сам — заголовок не ставим
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
     body: isFormData ? body : body ? JSON.stringify(body) : undefined,

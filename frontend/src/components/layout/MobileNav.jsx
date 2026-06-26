@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import useAuthStore from "../../store/useAuthStore";
-import { NAV_ITEMS } from "./navItems";
+import { NAV_ITEMS, canSee } from "./navItems";
 
 // ---------- Нижняя навигация (мобильные) ----------
 export default function MobileNav({ screen }) {
@@ -11,7 +11,7 @@ export default function MobileNav({ screen }) {
       className="lg:hidden fixed bottom-0 left-0 right-0 z-30 flex items-stretch justify-around gap-[2px] px-2 pt-2 border-t border-white/[.08]"
       style={{ background: "rgba(14,14,20,.86)", backdropFilter: "blur(22px)", paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}
     >
-      {NAV_ITEMS.filter((item) => !item.adminOnly || role === "admin").map((item) => {
+      {NAV_ITEMS.filter((item) => canSee(item, role)).map((item) => {
         const active = screen === item.key;
         return (
           <Link

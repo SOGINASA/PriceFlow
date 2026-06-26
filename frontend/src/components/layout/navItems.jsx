@@ -4,6 +4,7 @@ export const SCREEN_META = {
   analyzing: ["Обработка", "MedPartners распознаёт и сравнивает позиции"],
   report: ["Единый отчёт", "Результат обработки готов к экспорту"],
   search: ["Поиск по клиникам", "База клиник и внешние источники"],
+  verification: ["Очередь верификации", "Сопоставление услуг и проверка аномалий цен"],
   partner: ["Карточка клиники", "Полный прайс, контакты и дата актуальности"],
   admin: ["Аналитика платформы", "Статистика и состояние системы"],
 };
@@ -11,6 +12,7 @@ export const SCREEN_META = {
 // ---------- Пункты навигации рабочей области ----------
 // Используются и в сайдбаре, и в мобильной нижней панели.
 // adminOnly: пункт виден только администратору.
+// staffOnly: пункт виден оператору и администратору.
 export const NAV_ITEMS = [
   {
     key: "upload",
@@ -32,6 +34,14 @@ export const NAV_ITEMS = [
     icon: <><circle cx="11" cy="11" r="7" /><path d="m16.5 16.5 4 4" /></>,
   },
   {
+    key: "verification",
+    to: "/app/verification",
+    label: "Верификация",
+    shortLabel: "Ревью",
+    staffOnly: true,
+    icon: <><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>,
+  },
+  {
     key: "admin",
     to: "/app/admin",
     label: "Аналитика",
@@ -39,3 +49,10 @@ export const NAV_ITEMS = [
     icon: <path d="M3 13h4l2-6 3 12 2.5-8 1.5 4h5" />,
   },
 ];
+
+// Видим ли пункт меню при данной роли.
+export function canSee(item, role) {
+  if (item.adminOnly && role !== "admin") return false;
+  if (item.staffOnly && !["admin", "operator"].includes(role)) return false;
+  return true;
+}

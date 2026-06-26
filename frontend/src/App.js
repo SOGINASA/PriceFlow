@@ -13,6 +13,7 @@ import ReportPage from "./pages/app/ReportPage";
 import SearchPage from "./pages/app/SearchPage";
 import PartnerPage from "./pages/app/PartnerPage";
 import AdminPage from "./pages/app/AdminPage";
+import VerificationPage from "./pages/app/VerificationPage";
 
 // ---------- Карта маршрутов приложения ----------
 // Публичные: лендинг и экраны авторизации.
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="analyzing" element={<AnalyzingPage />} />
         <Route path="report" element={<ReportPage />} />
         <Route path="search" element={<SearchPage />} />
+        <Route path="verification" element={<VerificationPage />} />
         <Route path="partner/:id" element={<PartnerPage />} />
         <Route path="admin" element={<AdminPage />} />
       </Route>
