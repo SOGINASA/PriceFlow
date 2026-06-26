@@ -24,8 +24,10 @@ openpyxl==3.1.5                # XLSX
 pandas==2.2.3                  # tabular post-processing
 
 # === OCR (scans) ===
-pytesseract==0.3.13            # Tesseract wrapper (binary installed in system/Docker)
-pdf2image==1.17.0             # render PDF pages to images (requires poppler)
+# EasyOCR — готовая предобученная нейросеть (без системного бинаря Tesseract и
+# без poppler: PDF рендерим через PyMuPDF). Тянет torch/opencv; на первом запуске
+# скачивает веса моделей в кэш (~80 МБ на язык), дальше работает офлайн.
+easyocr==1.7.2
 Pillow==11.0.0
 
 # === Normalization / fuzzy matching (TZ 4.3) ===

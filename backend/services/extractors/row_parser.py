@@ -97,6 +97,73 @@ def parse_table_row(cells: List[str]) -> Optional[RawRow]:
     )
 
 
+def group_boxes_to_rows(boxes, y_tol: float = 10.0) -> List[List[str]]:
+    """Сгруппировать боксы OCR в строки таблицы → список ЯЧЕЕК (по X) на строку.
+
+    EasyOCR отдаёт фрагменты как (bbox, text[, conf]); bbox — 4 точки [x,y].
+    Боксы с близкими центрами по Y — одна строка; внутри строки сортируем по X.
+    Важно: каждая ячейка остаётся отдельной (не склеиваем в текст), поэтому
+    соседние колонки цен '900' '15 000' '10 000' не слипаются в одно число.
+    Чистая функция (без модели) — тестируема.
+    """
+    parsed = []
+    for box in boxes:
+        bbox, text = box[0], box[1]
+        if not text or not str(text).strip():
+            continue
+        ys = [pt[1] for pt in bbox]
+        xs = [pt[0] for pt in bbox]
+        parsed.append((sum(ys) / len(ys), min(xs), str(text).strip()))
+
+    parsed.sort(key=lambda t: t[0])  # сверху вниз
+    rows = []
+    current, cur_y = [], None
+    for cy, x, text in parsed:
+        if cur_y is None or abs(cy - cur_y) <= y_tol:
+            current.append((x, text))
+            cur_y = cy if cur_y is None else (cur_y + cy) / 2
+        else:
+            rows.append([t for _x, t in sorted(current)])
+            current, cur_y = [(x, text)], cy
+    if current:
+        rows.append([t for _x, t in sorted(current)])
+    return rows
+
+
+def group_boxes_to_lines(boxes, y_tol: float = 10.0) -> List[str]:
+    """Те же строки, но склеенные в текст (для raw_text/аудита)."""
+    return [' '.join(cells) for cells in group_boxes_to_rows(boxes, y_tol)]
+
+
+def parse_ocr_row(cells: List[str]) -> Optional[RawRow]:
+    """Разбор строки таблицы из ячеек OCR: текстовые ячейки → название,
+    числовые → цены по колонкам (1-я резидент, 2-я нерезидент).
+
+    Так как каждая ячейка — отдельный бокс OCR, многоколоночные цены не слипаются.
+    """
+    name_parts, prices = [], []
+    for c in cells:
+        s = str(c).strip()
+        if not s:
+            continue
+        # ячейка-цена: состоит только из цифр/разделителей и парсится в число
+        if re.fullmatch(r'[\d\s.,]+', s):
+            num = to_number(s)
+            if num is not None and num > 0:
+                prices.append(num)
+            continue
+        name_parts.append(s)
+
+    name = ' '.join(name_parts).strip(' .\t-—:')
+    if not name or len(name) < 3:
+        return None
+    return RawRow(
+        service_name_raw=name,
+        price_resident=prices[0] if prices else None,
+        price_nonresident=prices[1] if len(prices) > 1 else None,
+    )
+
+
 def parse_text_line(line: str) -> Optional[RawRow]:
     """Разбор свободной строки 'Название услуги .... 12 500'."""
     line = line.strip()
