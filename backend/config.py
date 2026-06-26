@@ -55,7 +55,6 @@ class Config:
     # === Нормализация / сопоставление со справочником ===
     # Порог автосопоставления (cosine similarity). Выше — авто, ниже — очередь на ревью.
     MATCH_AUTO_THRESHOLD = float(os.environ.get('MATCH_AUTO_THRESHOLD', 0.85))
-    MATCH_SUGGEST_THRESHOLD = float(os.environ.get('MATCH_SUGGEST_THRESHOLD', 0.60))
 
     # === Валидация цен ===
     PRICE_ANOMALY_PCT = float(os.environ.get('PRICE_ANOMALY_PCT', 0.50))  # отклонение >50% → аномалия
@@ -66,9 +65,6 @@ class Config:
     OCR_LANGS = [s.strip() for s in os.environ.get('OCR_LANGS', 'ru,en').split(',') if s.strip()]
     OCR_GPU = os.environ.get('OCR_GPU', 'false').lower() in ('1', 'true', 'yes')
     OCR_DPI = int(os.environ.get('OCR_DPI', 300))  # рендер PDF->картинка; 300 — чётче мелкий шрифт
-
-    # === Внешний LLM/OCR провайдер (опционально, для извлечения и нормализации) ===
-    GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 
     # === Админ-раздел ===
     ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
