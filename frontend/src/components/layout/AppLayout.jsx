@@ -3,6 +3,7 @@ import Aurora from "../ui/Aurora";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import MobileNav from "./MobileNav";
+import ProfileSheet from "./ProfileSheet";
 
 // ---------- Каркас рабочей области ----------
 // Фиксированный сайдбар (десктоп) + липкий топбар + контент (Outlet) +
@@ -22,12 +23,13 @@ export default function AppLayout() {
         {/* Основная колонка (отступ под сайдбар на десктопе) */}
         <div className="lg:ml-[248px] min-h-screen flex flex-col">
           <Topbar screen={screen} />
-          <main className="flex-1 p-[30px] max-md:p-[20px] max-md:pb-[104px] max-w-[1180px] w-full mx-auto">
+          <main className="flex-1 p-[30px] max-lg:px-4 max-lg:pt-5 max-lg:pb-[108px] max-w-[1180px] w-full mx-auto">
             <Outlet />
           </main>
         </div>
 
         <MobileNav screen={screen} />
+        <ProfileSheet />
       </div>
     </div>
   );

@@ -53,12 +53,9 @@ export default function ClinicSearch({ placeholder, noneText, onSelect, showArro
     <div className="flex flex-col gap-[10px]">
       {/* Поле ввода */}
       <div
-        className="flex items-center gap-3 px-[18px] py-[15px] rounded-2xl border transition-all"
-        style={{
-          background: "rgba(12,12,18,.7)",
-          borderColor: focused ? "rgba(94,92,230,.6)" : "rgba(255,255,255,.1)",
-          boxShadow: focused ? "0 0 0 4px rgba(94,92,230,.12)" : "none",
-        }}
+        className={`flex items-center gap-3 px-[18px] py-[15px] rounded-2xl border transition-all bg-[rgba(12,12,18,0.7)] ${
+          focused ? "border-primary/60 shadow-[0_0_0_4px_rgba(94,92,230,0.12)]" : "border-white/10"
+        }`}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
           <circle cx="11" cy="11" r="6.5" stroke="rgba(245,245,247,.45)" strokeWidth="1.7" />
@@ -99,7 +96,7 @@ export default function ClinicSearch({ placeholder, noneText, onSelect, showArro
             {c.from != null && (
               <div className="text-right shrink-0">
                 <div className="text-[11.5px] text-ink/40">от</div>
-                <div className="font-bold text-[15px]" style={{ color: "#5BE892" }}>{c.from} ₸</div>
+                <div className="font-bold text-[15px] text-success-soft">{c.from} ₸</div>
               </div>
             )}
             {showArrow && (

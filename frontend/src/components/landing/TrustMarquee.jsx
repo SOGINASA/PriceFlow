@@ -29,7 +29,7 @@ export default function TrustMarquee() {
     <section className="pt-[10px] pb-[50px] relative z-[2]">
       <div className="text-center text-[12.5px] tracking-[.14em] uppercase text-ink/30 mb-[26px]">{tr.trust.label}</div>
       {/* Маска по краям + бесконечная прокрутка (дублируем список) */}
-      <div className="relative overflow-hidden" style={{ maskImage: "linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)", WebkitMaskImage: "linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)" }}>
+      <div className="relative overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)] [-webkit-mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
         <div className="flex gap-[18px] w-max animate-marquee">
           {[0, 1].map((dup) => (
             <div key={dup} className="flex gap-[18px]" aria-hidden={dup === 1}>

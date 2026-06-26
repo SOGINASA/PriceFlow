@@ -30,7 +30,7 @@ export default function AuthLayout({ children }) {
 export function AuthHeader({ title, subtitle }) {
   return (
     <div className="flex flex-col items-center text-center mb-[30px]">
-      <span className="grid place-items-center w-[54px] h-[54px] rounded-2xl mb-[18px]" style={{ background: "linear-gradient(135deg,#6E8BFF,#5E5CE6)", boxShadow: "0 0 30px rgba(94,92,230,.55)" }}>
+      <span className="grid place-items-center w-[54px] h-[54px] rounded-2xl mb-[18px] bg-brand shadow-brand-glow-lg">
         <svg width="27" height="27" viewBox="0 0 16 16" fill="none">
           <path d="M2 11.5 6 6l3 3 5-6.5" stroke="#fff" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
         </svg>

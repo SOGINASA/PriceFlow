@@ -17,10 +17,7 @@ export default function LandingNav() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-center px-6 py-4">
-      <div
-        className="flex items-center justify-between w-full max-w-[1200px] py-[10px] pr-[14px] pl-5 rounded-[18px] border border-white/10"
-        style={{ background: "rgba(18,18,24,.6)", backdropFilter: "blur(20px)" }}
-      >
+      <div className="flex items-center justify-between gap-2 w-full max-w-[1200px] py-[10px] pr-[10px] pl-4 sm:pl-5 sm:pr-[14px] rounded-[18px] border border-white/10 bg-[rgba(18,18,24,0.6)] backdrop-blur-[20px]">
         {/* Логотип → к началу страницы */}
         <a href="#top">
           <Logo />
@@ -43,7 +40,7 @@ export default function LandingNav() {
         </div>
 
         {/* Переключатель языка + CTA */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="flex items-center gap-[2px] p-[3px] rounded-[11px] bg-white/5 border border-white/[.07]">
             {LANGUAGES.map((code) => {
               const on = lang === code;
@@ -51,11 +48,7 @@ export default function LandingNav() {
                 <button
                   key={code}
                   onClick={() => setLang(code)}
-                  className="font-semibold text-xs px-[9px] py-[5px] rounded-lg transition-all"
-                  style={{
-                    background: on ? "rgba(94,92,230,.9)" : "transparent",
-                    color: on ? "#fff" : "rgba(245,245,247,.55)",
-                  }}
+                  className={`font-semibold text-xs px-[8px] sm:px-[9px] py-[5px] rounded-lg transition-all ${on ? "bg-primary/90 text-white" : "bg-transparent text-ink/55"}`}
                 >
                   {code.toUpperCase()}
                 </button>
@@ -64,7 +57,7 @@ export default function LandingNav() {
           </div>
           <Link
             to="/login"
-            className="text-sm font-semibold px-[18px] py-[10px] rounded-[11px] bg-ink text-bg transition-transform hover:-translate-y-[1px]"
+            className="hidden sm:inline-flex text-sm font-semibold px-[14px] sm:px-[18px] py-[10px] rounded-[11px] bg-ink text-bg transition-transform hover:-translate-y-[1px]"
           >
             {tr.nav.start}
           </Link>

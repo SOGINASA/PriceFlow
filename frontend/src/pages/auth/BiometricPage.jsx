@@ -42,18 +42,18 @@ export default function BiometricPage() {
       ? "Приложите палец к сенсору, чтобы сохранить отпечаток для входа."
       : "Посмотрите в камеру — система запомнит черты лица для входа.";
 
-  // Бейдж статуса (ожидание / сканирование / успех).
+  // Бейдж статуса (ожидание / сканирование / успех) — Tailwind-классы.
   const statusBadge = {
-    idle: { dot: "#6E8BFF", text: "Ожидание…", bg: "rgba(255,255,255,.05)", border: "rgba(255,255,255,.1)", color: "rgba(245,245,247,.6)" },
-    scanning: { dot: "#A78BFA", text: "Сканирование…", bg: "rgba(255,255,255,.05)", border: "rgba(255,255,255,.1)", color: "rgba(245,245,247,.6)" },
-    success: { dot: "#30D158", text: "Успешно · доступ разрешён", bg: "rgba(48,209,88,.12)", border: "rgba(48,209,88,.3)", color: "#5BE892" },
+    idle: { dot: "bg-primary-400", text: "Ожидание…", wrap: "bg-white/5 border-white/10 text-ink/60" },
+    scanning: { dot: "bg-violet", text: "Сканирование…", wrap: "bg-white/5 border-white/10 text-ink/60" },
+    success: { dot: "bg-success shadow-[0_0_8px_#30D158]", text: "Успешно · доступ разрешён", wrap: "bg-success/[0.12] border-success/30 text-success-soft" },
   }[status];
 
   return (
     <AuthLayout>
       <section className="w-full max-w-[440px]">
-        <div className="relative overflow-hidden rounded-[26px] border border-white/[.09] p-9 px-[30px] text-center" style={{ background: "rgba(20,20,28,.72)", backdropFilter: "blur(22px)", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
-          <div className="absolute pointer-events-none rounded-full" style={{ top: "-30%", left: "50%", width: 340, height: 340, marginLeft: -170, background: "radial-gradient(circle,rgba(94,92,230,.28),transparent 65%)", filter: "blur(46px)" }} />
+        <div className="relative overflow-hidden rounded-[26px] border border-white/[0.09] p-9 px-[30px] text-center bg-[rgba(20,20,28,0.72)] backdrop-blur-[22px] shadow-card">
+          <div className="absolute pointer-events-none rounded-full -top-[30%] left-1/2 -ml-[170px] w-[340px] h-[340px] blur-[46px] bg-[radial-gradient(circle,rgba(94,92,230,.28),transparent_65%)]" />
 
           <div className="relative">
             {/* Переключатель режима */}
@@ -64,8 +64,7 @@ export default function BiometricPage() {
                   <button
                     key={key}
                     onClick={() => reset(key)}
-                    className="px-4 py-2 rounded-[9px] text-[13px] font-semibold transition-all"
-                    style={{ background: on ? "rgba(94,92,230,.9)" : "transparent", color: on ? "#fff" : "rgba(245,245,247,.55)" }}
+                    className={`px-4 py-2 rounded-[9px] text-[13px] font-semibold transition-all ${on ? "bg-primary/90 text-white" : "bg-transparent text-ink/55"}`}
                   >
                     {label}
                   </button>
@@ -132,8 +131,8 @@ export default function BiometricPage() {
             <p className="mt-[9px] text-[14.5px] leading-[1.55] text-ink/50 max-w-[300px] mx-auto">{desc}</p>
 
             {/* Статус */}
-            <div className="mt-[18px] inline-flex items-center gap-2 px-[15px] py-2 rounded-[10px] text-[13px] font-semibold border" style={{ background: statusBadge.bg, borderColor: statusBadge.border, color: statusBadge.color }}>
-              <span className="w-[7px] h-[7px] rounded-full animate-pulse-dot" style={{ background: statusBadge.dot, boxShadow: status === "success" ? "0 0 8px #30D158" : "none" }} />
+            <div className={`mt-[18px] inline-flex items-center gap-2 px-[15px] py-2 rounded-[10px] text-[13px] font-semibold border ${statusBadge.wrap}`}>
+              <span className={`w-[7px] h-[7px] rounded-full animate-pulse-dot ${statusBadge.dot}`} />
               {statusBadge.text}
             </div>
 
@@ -142,8 +141,7 @@ export default function BiometricPage() {
               <button
                 onClick={status === "success" ? () => navigate("/app/upload") : scan}
                 disabled={status === "scanning"}
-                className="w-full p-[14px] rounded-[13px] text-white text-[15px] font-semibold transition-all hover:-translate-y-[2px] disabled:opacity-50 disabled:hover:translate-y-0"
-                style={{ background: "linear-gradient(135deg,#6E8BFF,#5E5CE6)", boxShadow: "0 10px 30px rgba(94,92,230,.4)" }}
+                className="w-full p-[14px] rounded-[13px] text-white text-[15px] font-semibold transition-all hover:-translate-y-[2px] disabled:opacity-50 disabled:hover:translate-y-0 bg-brand shadow-brand"
               >
                 {status === "success" ? "Войти в MedPartners" : status === "scanning" ? "Сканирование…" : "Сканировать"}
               </button>

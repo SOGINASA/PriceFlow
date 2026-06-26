@@ -8,12 +8,9 @@ import useAuthStore from "../../store/useAuthStore";
 function OAuthButton({ children, primary }) {
   return (
     <button
-      className="flex items-center justify-center gap-[11px] w-full p-[13px] rounded-[13px] cursor-pointer text-[15px] font-semibold transition-all hover:-translate-y-[1px]"
-      style={
-        primary
-          ? { background: "#fff", color: "#1a1a1a", border: "none" }
-          : { background: "rgba(255,255,255,.06)", color: "#F5F5F7", border: "1px solid rgba(255,255,255,.12)" }
-      }
+      className={`flex items-center justify-center gap-[11px] w-full p-[13px] rounded-[13px] cursor-pointer text-[15px] font-semibold transition-all hover:-translate-y-[1px] ${
+        primary ? "bg-white text-[#1a1a1a]" : "bg-white/[0.06] text-ink border border-white/[0.12]"
+      }`}
     >
       {children}
     </button>
@@ -37,7 +34,7 @@ export default function LoginPage() {
       <section className="w-full max-w-[440px]">
         <AuthHeader title="С возвращением" subtitle="Войдите в MedPartners, чтобы продолжить" />
 
-        <div className="rounded-3xl border border-white/[.09] p-7" style={{ background: "rgba(20,20,28,.72)", backdropFilter: "blur(22px)", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
+        <div className="rounded-3xl border border-white/[0.09] p-7 bg-[rgba(20,20,28,0.72)] backdrop-blur-[22px] shadow-card">
           {/* OAuth */}
           <div className="flex flex-col gap-[11px]">
             <OAuthButton primary>
@@ -70,8 +67,7 @@ export default function LoginPage() {
             <Field label="Пароль" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
             <button
               onClick={handleLogin}
-              className="mt-1 w-full p-[14px] rounded-[13px] text-white text-[15px] font-semibold transition-transform hover:-translate-y-[2px]"
-              style={{ background: "linear-gradient(135deg,#6E8BFF,#5E5CE6)", boxShadow: "0 10px 30px rgba(94,92,230,.4)" }}
+              className="mt-1 w-full p-[14px] rounded-[13px] text-white text-[15px] font-semibold transition-transform hover:-translate-y-[2px] bg-brand shadow-brand"
             >
               Войти
             </button>

@@ -69,6 +69,64 @@ export const REPORT_ROWS = [
 // Разброс цен на МРТ по 12 клиникам (тыс. ₸) — для графика отчёта.
 export const REPORT_CHART = [20, 24, 28, 15, 22, 19, 26, 17, 21, 23, 18, 25];
 
+// ---------- Список отчётов ----------
+// Каждый отчёт — результат одной обработки архива. rows/chart переиспользуют
+// демо-данные выше. При подключении бэкенда заменяется на reportsApi.list().
+export const REPORTS = [
+  {
+    id: "r1",
+    title: "Единый отчёт · Алматы",
+    date: "26 июня 2026, 16:12",
+    clinics: 12,
+    items: 4218,
+    files: 8,
+    duration: "2.3 с",
+    savings: 34,
+    status: "done",
+    rows: REPORT_ROWS,
+    chart: REPORT_CHART,
+  },
+  {
+    id: "r2",
+    title: "Прайсы Q2 · Астана",
+    date: "24 июня 2026, 11:40",
+    clinics: 7,
+    items: 2540,
+    files: 5,
+    duration: "1.6 с",
+    savings: 28,
+    status: "done",
+    rows: REPORT_ROWS.slice(0, 4),
+    chart: [18, 22, 26, 14, 20, 24, 17, 21, 19],
+  },
+  {
+    id: "r3",
+    title: "Стоматология · Шымкент",
+    date: "21 июня 2026, 09:05",
+    clinics: 4,
+    items: 1180,
+    files: 3,
+    duration: "0.9 с",
+    savings: 41,
+    status: "done",
+    rows: REPORT_ROWS.slice(2),
+    chart: [12, 16, 14, 19, 11, 15, 13],
+  },
+  {
+    id: "r4",
+    title: "Кардиология · Караганда",
+    date: "19 июня 2026, 18:33",
+    clinics: 5,
+    items: 1902,
+    files: 4,
+    duration: "1.2 с",
+    savings: 23,
+    status: "done",
+    rows: REPORT_ROWS,
+    chart: [22, 28, 24, 30, 19, 26, 21, 25],
+  },
+];
+
 // Обработки за неделю (Пн–Вс) — график админ-панели.
 export const ADMIN_WEEK_CHART = [120, 180, 150, 240, 290, 170, 210];
 

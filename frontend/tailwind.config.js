@@ -30,6 +30,36 @@ module.exports = {
         display: ["Sora", "system-ui", "sans-serif"], // заголовки
         sans: ["Manrope", "system-ui", "sans-serif"], // основной текст
       },
+      // ---------- Фирменные градиенты (используются как bg-brand и т.п.) ----------
+      backgroundImage: {
+        brand: "linear-gradient(135deg,#6E8BFF,#5E5CE6)", // основной градиент кнопок/логотипа
+        "brand-text": "linear-gradient(115deg,#6E8BFF,#A78BFA 55%,#5E5CE6)", // градиентный текст
+        "brand-soft": "linear-gradient(135deg,rgba(94,92,230,.16),rgba(167,139,250,.07))", // мягкая подложка (шапки)
+        "brand-cta": "linear-gradient(135deg,rgba(94,92,230,.18),rgba(167,139,250,.1))", // CTA-блок лендинга
+        panel: "linear-gradient(180deg,rgba(20,20,28,.7),rgba(12,12,18,.7))", // стеклянная панель
+        "panel-soft": "linear-gradient(180deg,rgba(20,20,28,.7),rgba(12,12,18,.6))", // вариант панели
+        progress: "linear-gradient(90deg,#6E8BFF,#A78BFA)", // прогресс-бары
+        bar: "linear-gradient(180deg,rgba(110,139,255,.85),rgba(94,92,230,.3))", // столбики графика
+        "bar-peak": "linear-gradient(180deg,#A78BFA,#5E5CE6)", // пиковый столбик
+        "bar-min": "linear-gradient(180deg,#5BE892,#1F8A5B)", // минимальный (лучшая цена)
+        "feature-card": "linear-gradient(180deg,rgba(255,255,255,.026),rgba(255,255,255,.004))",
+        "stat-text": "linear-gradient(120deg,#fff,#9DB0FF)", // градиентные цифры статистики
+      },
+      // ---------- Тени из дизайна ----------
+      boxShadow: {
+        brand: "0 10px 30px rgba(94,92,230,.4)", // кнопка
+        "brand-lg": "0 16px 44px rgba(94,92,230,.55)", // кнопка hover
+        "brand-glow": "0 0 18px rgba(94,92,230,.6)", // свечение логотипа
+        "brand-glow-lg": "0 0 30px rgba(94,92,230,.55)",
+        card: "0 30px 80px rgba(0,0,0,.5)", // карточки авторизации
+        "card-hero": "0 40px 120px rgba(0,0,0,.6),0 0 80px rgba(94,92,230,.15)", // карточка hero
+        panel: "0 30px 90px rgba(0,0,0,.5)", // панели анализа
+        toast: "0 16px 50px rgba(0,0,0,.5)",
+        sheet: "0 -20px 60px rgba(0,0,0,.5)", // нижний шит
+      },
+      dropShadow: {
+        icon: "0 4px 14px rgba(94,92,230,.35)", // иконки возможностей
+      },
       // ---------- Анимации из дизайна ----------
       keyframes: {
         auroraA: {

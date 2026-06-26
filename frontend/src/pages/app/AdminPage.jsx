@@ -3,17 +3,17 @@ import { ADMIN_WEEK_CHART, ADMIN_JOBS } from "../../data/mock";
 import StatTile from "../../components/ui/StatTile";
 import { dashboardApi, archivesApi } from "../../api";
 
-// Статусы обработки документа (бэкенд) → бейдж.
+// Статусы обработки документа (бэкенд) → бейдж (Tailwind-классы).
+const ST_DONE = { label: "Готово", cls: "bg-success/[0.12] border-success/30 text-success-soft", dot: "bg-success-soft" };
+const ST_PROC = { label: "Обработка", cls: "bg-primary/[0.14] border-primary/30 text-lav", dot: "bg-lav" };
+const ST_PEND = { label: "В очереди", cls: "bg-primary/[0.1] border-primary/[0.22] text-lav", dot: "bg-lav" };
+const ST_REVIEW = { label: "На ревью", cls: "bg-[rgba(255,193,94,0.12)] border-[rgba(255,193,94,0.3)] text-[#FFD37E]", dot: "bg-[#FFD37E]" };
+const ST_ERR = { label: "Ошибка", cls: "bg-danger/[0.12] border-danger/30 text-danger-soft", dot: "bg-danger-soft" };
+
 const STATUS_STYLE = {
-  done: { label: "Готово", color: "#5BE892", bg: "rgba(48,209,88,.12)", border: "rgba(48,209,88,.3)" },
-  processing: { label: "Обработка", color: "#9DB0FF", bg: "rgba(94,92,230,.14)", border: "rgba(94,92,230,.3)" },
-  pending: { label: "В очереди", color: "#9DB0FF", bg: "rgba(94,92,230,.1)", border: "rgba(94,92,230,.22)" },
-  needs_review: { label: "На ревью", color: "#FFD37E", bg: "rgba(255,193,94,.12)", border: "rgba(255,193,94,.3)" },
-  error: { label: "Ошибка", color: "#FF8B85", bg: "rgba(255,95,87,.12)", border: "rgba(255,95,87,.3)" },
+  done: ST_DONE, processing: ST_PROC, pending: ST_PEND, needs_review: ST_REVIEW, error: ST_ERR,
   // фолбэк для демо-данных (русские статусы)
-  Готово: { label: "Готово", color: "#5BE892", bg: "rgba(48,209,88,.12)", border: "rgba(48,209,88,.3)" },
-  Обработка: { label: "Обработка", color: "#9DB0FF", bg: "rgba(94,92,230,.14)", border: "rgba(94,92,230,.3)" },
-  Ошибка: { label: "Ошибка", color: "#FF8B85", bg: "rgba(255,95,87,.12)", border: "rgba(255,95,87,.3)" },
+  Готово: ST_DONE, Обработка: ST_PROC, Ошибка: ST_ERR,
 };
 
 // Полоса состояния системы (анимируется по ширине при монтировании).
@@ -29,8 +29,8 @@ function SystemBar({ label, percent, accent }) {
         <span className="text-ink/60">{label}</span>
         <span className="font-bold" style={accent ? { color: accent } : undefined}>{percent}%</span>
       </div>
-      <div className="h-[7px] rounded-[4px] bg-white/[.06]">
-        <div className="h-full rounded-[4px]" style={{ width: `${width}%`, background: "linear-gradient(90deg,#6E8BFF,#A78BFA)", transition: "width 1.1s cubic-bezier(.16,1,.3,1)" }} />
+      <div className="h-[7px] rounded-[4px] bg-white/[0.06]">
+        <div className="h-full rounded-[4px] bg-progress transition-[width] duration-[1100ms] ease-[cubic-bezier(.16,1,.3,1)]" style={{ width: `${width}%` }} />
       </div>
     </div>
   );
@@ -107,7 +107,7 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <div className="font-display font-semibold text-base">Обработок за неделю</div>
             <span className="inline-flex items-center gap-[6px] text-xs text-ink/45">
-              <span className="w-[9px] h-[9px] rounded-[3px]" style={{ background: "#6E8BFF" }} />задачи
+              <span className="w-[9px] h-[9px] rounded-[3px] bg-primary-400" />задачи
             </span>
           </div>
           <div className="flex items-end gap-[14px] h-[200px] mt-6">
@@ -116,13 +116,8 @@ export default function AdminPage() {
               return (
                 <div key={i} className="flex-1 flex flex-col justify-end h-full">
                   <div
-                    className="w-full rounded-t-[7px]"
-                    style={{
-                      height: `${(v / max) * 100}%`,
-                      background: peak ? "linear-gradient(180deg,#A78BFA,#5E5CE6)" : "linear-gradient(180deg,rgba(110,139,255,.8),rgba(94,92,230,.25))",
-                      boxShadow: peak ? "0 0 20px rgba(94,92,230,.5)" : "none",
-                      transition: `height .9s cubic-bezier(.16,1,.3,1) ${i * 70}ms`,
-                    }}
+                    className={`w-full rounded-t-[7px] ${peak ? "bg-bar-peak shadow-[0_0_20px_rgba(94,92,230,.5)]" : "bg-bar"}`}
+                    style={{ height: `${(v / max) * 100}%`, transition: `height .9s cubic-bezier(.16,1,.3,1) ${i * 70}ms` }}
                   />
                 </div>
               );
@@ -151,7 +146,7 @@ export default function AdminPage() {
             <thead>
               <tr>
                 {["Документ", "Формат", "Позиции", "Статус", "Время"].map((h, i) => (
-                  <th key={h} className="py-[11px] px-[14px] first:pl-[22px] last:pr-[22px] text-[11.5px] font-semibold text-ink/40 uppercase tracking-[.04em]" style={{ textAlign: i === 4 ? "right" : "left" }}>{h}</th>
+                  <th key={h} className={`py-[11px] px-[14px] first:pl-[22px] last:pr-[22px] text-[11.5px] font-semibold text-ink/40 uppercase tracking-[.04em] ${i === 4 ? "text-right" : "text-left"}`}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -164,8 +159,8 @@ export default function AdminPage() {
                     <td className="py-[13px] px-[14px] text-[13.5px] text-ink/65">{j.files}</td>
                     <td className="py-[13px] px-[14px] text-[13.5px] text-ink/65">{j.items}</td>
                     <td className="py-[13px] px-[14px]">
-                      <span className="inline-flex items-center gap-[6px] px-[11px] py-[5px] rounded-lg text-xs font-semibold border" style={{ background: s.bg, borderColor: s.border, color: s.color }}>
-                        <span className="w-[6px] h-[6px] rounded-full" style={{ background: s.color }} />{s.label}
+                      <span className={`inline-flex items-center gap-[6px] px-[11px] py-[5px] rounded-lg text-xs font-semibold border ${s.cls}`}>
+                        <span className={`w-[6px] h-[6px] rounded-full ${s.dot}`} />{s.label}
                       </span>
                     </td>
                     <td className="py-[13px] px-[22px] text-[13px] text-ink/45 text-right">{j.time}</td>

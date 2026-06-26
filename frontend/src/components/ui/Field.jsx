@@ -14,12 +14,9 @@ export default function Field({ label, type = "text", placeholder, value, onChan
         onChange={onChange}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        className="w-full px-[15px] py-[13px] rounded-xl text-ink text-[15px] outline-none transition-all border"
-        style={{
-          background: "rgba(12,12,18,.7)",
-          borderColor: focused ? "rgba(94,92,230,.6)" : "rgba(255,255,255,.1)",
-          boxShadow: focused ? "0 0 0 4px rgba(94,92,230,.12)" : "none",
-        }}
+        className={`w-full px-[15px] py-[13px] rounded-xl text-ink text-[15px] outline-none transition-all border bg-[rgba(12,12,18,0.7)] ${
+          focused ? "border-primary/60 shadow-[0_0_0_4px_rgba(94,92,230,0.12)]" : "border-white/10"
+        }`}
       />
     </label>
   );

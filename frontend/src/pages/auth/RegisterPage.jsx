@@ -24,8 +24,9 @@ export default function RegisterPage() {
     return (
       <button
         onClick={() => setRole(value)}
-        className="flex-1 flex items-center gap-[10px] p-[13px] rounded-[13px] border text-left text-ink transition-all"
-        style={{ background: on ? "rgba(94,92,230,.12)" : "rgba(255,255,255,.04)", borderColor: on ? "rgba(94,92,230,.45)" : "rgba(255,255,255,.1)" }}
+        className={`flex-1 flex items-center gap-[10px] p-[13px] rounded-[13px] border text-left text-ink transition-all ${
+          on ? "bg-primary/[0.12] border-primary/45" : "bg-white/[0.04] border-white/10"
+        }`}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={on ? "#9DB0FF" : "rgba(245,245,247,.6)"} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
           {icon}
@@ -43,7 +44,7 @@ export default function RegisterPage() {
       <section className="w-full max-w-[460px]">
         <AuthHeader title="Создать аккаунт" subtitle="Пара шагов — и вы внутри MedPartners" />
 
-        <div className="rounded-3xl border border-white/[.09] p-7" style={{ background: "rgba(20,20,28,.72)", backdropFilter: "blur(22px)", boxShadow: "0 30px 80px rgba(0,0,0,.5)" }}>
+        <div className="rounded-3xl border border-white/[0.09] p-7 bg-[rgba(20,20,28,0.72)] backdrop-blur-[22px] shadow-card">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1">
@@ -67,8 +68,7 @@ export default function RegisterPage() {
 
             <button
               onClick={handleContinue}
-              className="mt-[6px] w-full p-[14px] rounded-[13px] text-white text-[15px] font-semibold transition-transform hover:-translate-y-[2px]"
-              style={{ background: "linear-gradient(135deg,#6E8BFF,#5E5CE6)", boxShadow: "0 10px 30px rgba(94,92,230,.4)" }}
+              className="mt-[6px] w-full p-[14px] rounded-[13px] text-white text-[15px] font-semibold transition-transform hover:-translate-y-[2px] bg-brand shadow-brand"
             >
               Продолжить → настройка биометрии
             </button>

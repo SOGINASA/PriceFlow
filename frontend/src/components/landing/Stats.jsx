@@ -15,7 +15,7 @@ function StatCard({ config, label, delay }) {
   const [revRef, vis] = useReveal();
   return (
     <div ref={revRef} style={revealStyle(vis, delay)} className="text-center px-4 py-[30px] rounded-[20px] bg-white/[.03] border border-white/[.07]">
-      <div ref={ref} className="font-display font-bold" style={{ fontSize: "clamp(34px,4.5vw,52px)", letterSpacing: "-.03em", background: "linear-gradient(120deg,#fff,#9DB0FF)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
+      <div ref={ref} className="font-display font-bold text-[clamp(34px,4.5vw,52px)] tracking-[-.03em] bg-stat-text bg-clip-text text-transparent">
         {value}
         {config.suffix || ""}
       </div>

@@ -22,15 +22,15 @@ export default function Pipeline() {
     <section id="how" className="relative px-6 pt-[90px] pb-[70px] max-w-[1240px] mx-auto">
       {/* Заголовок секции */}
       <div ref={headRef} style={revealStyle(headVis)} className="text-center max-w-[680px] mx-auto mb-[50px]">
-        <div className="text-[13px] font-bold tracking-[.06em] uppercase" style={{ color: "#8B88FF" }}>{tr.pipe.eyebrow}</div>
-        <h2 className="font-display font-bold mt-[14px] whitespace-pre-line" style={{ fontSize: "clamp(30px,4.5vw,46px)", letterSpacing: "-.03em", lineHeight: 1.08 }}>{tr.pipe.title}</h2>
+        <div className="text-[13px] font-bold tracking-[.06em] uppercase text-[#8B88FF]">{tr.pipe.eyebrow}</div>
+        <h2 className="font-display font-bold mt-[14px] whitespace-pre-line text-[clamp(30px,4.5vw,46px)] tracking-[-.03em] leading-[1.08]">{tr.pipe.title}</h2>
         <p className="mt-[18px] text-[17px] leading-[1.6] text-ink/60">{tr.pipe.sub}</p>
       </div>
 
       {/* Диаграмма потока */}
       <div ref={diagRef} style={revealStyle(diagVis)} className="relative rounded-[26px] border border-white/10 overflow-hidden p-2">
         {/* фон-градиент панели */}
-        <div className="absolute inset-0 rounded-[26px]" style={{ background: "linear-gradient(180deg,rgba(20,20,28,.7),rgba(12,12,18,.7))" }} />
+        <div className="absolute inset-0 rounded-[26px] bg-panel" />
         <div className="relative">
           <svg viewBox="0 0 1200 470" className="w-full h-auto block">
             <defs>
@@ -105,9 +105,9 @@ export default function Pipeline() {
             {tr.pipe.steps.map((step, i) => {
               const on = i === 0;
               return (
-                <div key={i} className="flex items-center gap-[9px] px-[15px] py-[9px] rounded-[11px] border" style={{ background: on ? "rgba(94,92,230,.14)" : "rgba(255,255,255,.04)", borderColor: on ? "rgba(94,92,230,.35)" : "rgba(255,255,255,.08)" }}>
-                  <span className="w-2 h-2 rounded-full" style={{ background: on ? "#6E8BFF" : "rgba(245,245,247,.3)", boxShadow: on ? "0 0 8px #6E8BFF" : "none" }} />
-                  <span className="text-[13.5px] font-semibold" style={{ color: on ? "#F5F5F7" : "rgba(245,245,247,.7)" }}>{step}</span>
+                <div key={i} className={`flex items-center gap-[9px] px-[15px] py-[9px] rounded-[11px] border ${on ? "bg-primary/[0.14] border-primary/35" : "bg-white/[0.04] border-white/[0.08]"}`}>
+                  <span className={`w-2 h-2 rounded-full ${on ? "bg-primary-400 shadow-[0_0_8px_#6E8BFF]" : "bg-ink/30"}`} />
+                  <span className={`text-[13.5px] font-semibold ${on ? "text-ink" : "text-ink/70"}`}>{step}</span>
                 </div>
               );
             })}
