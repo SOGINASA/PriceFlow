@@ -35,7 +35,32 @@ export function toClinicCard(partner, { from } = {}) {
     from: from != null ? formatFrom(from) : null,
     initial: name.replace(/[«"'»]/g, "").trim().charAt(0).toUpperCase() || "?",
     gradient: GRADIENTS[hashIndex(String(id), GRADIENTS.length)],
+    address: partner.address || "",
+    description: partner.description || "",
+    // алиасы для форм/страниц кабинета
+    phone: partner.contact_phone || "",
+    email: partner.contact_email || "",
     contact_email: partner.contact_email || null,
     contact_phone: partner.contact_phone || null,
+  };
+}
+
+// ---------- Маппинг позиции прайса (PriceItem) в элемент UI ----------
+// Бэкенд: { item_id, service_name_raw, service_name, category, price_*_kzt,
+// effective_date, history:[{price_*_kzt, effective_date}] }.
+export function toServiceItem(s) {
+  return {
+    id: s.item_id,
+    name: s.service_name || s.service_name_raw,
+    rawName: s.service_name_raw,
+    category: s.category || "—",
+    resident: s.price_resident_kzt ?? 0,
+    nonResident: s.price_nonresident_kzt ?? 0,
+    effectiveDate: s.effective_date,
+    history: (s.history || []).map((h) => ({
+      resident: h.price_resident_kzt ?? 0,
+      nonResident: h.price_nonresident_kzt ?? 0,
+      date: h.effective_date,
+    })),
   };
 }

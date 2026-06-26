@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import useUIStore from "../../store/useUIStore";
 import useAuthStore from "../../store/useAuthStore";
 import { CLINICS } from "../../data/mock";
+import { adminApi } from "../../api";
 
 // ---------- Профиль (нижний шит, мобайл) ----------
 // Открывается из нижней навигации/хедера. Содержит профиль, переключатель
@@ -9,19 +10,24 @@ import { CLINICS } from "../../data/mock";
 export default function ProfileSheet() {
   const navigate = useNavigate();
   const { profileOpen, closeProfile } = useUIStore();
-  const { user, role, partnerId, setRole, enterPartner, logout } = useAuthStore();
+  const { user, role, partnerId, setRole, enterPartner, setSession, logout } = useAuthStore();
 
   const go = (path) => {
     closeProfile();
     navigate(path);
   };
 
-  // Переключение роли (демо). Партнёр → его кабинет.
-  const changeRole = (next) => {
+  // Переключение роли (демо). Партнёр → реальный вход в бэкенд, иначе фолбэк.
+  const changeRole = async (next) => {
     if (next === "partner") {
-      const cid = partnerId || "alpha";
-      const clinic = CLINICS.find((c) => c.id === cid);
-      enterPartner({ partnerId: cid, name: clinic?.name || "Клиника" });
+      try {
+        const res = await adminApi.login({ username: "partner@alfa.kz", password: "partner123" });
+        setSession({ user: { name: res.user?.full_name || "Партнёр", email: "partner@alfa.kz" }, role: "partner", token: res.access_token, partnerId: res.user?.partner_id || null });
+      } catch {
+        const cid = partnerId || "alpha";
+        const clinic = CLINICS.find((c) => c.id === cid);
+        enterPartner({ partnerId: cid, name: clinic?.name || "Клиника" });
+      }
       go("/app/my-prices");
       return;
     }

@@ -1,32 +1,49 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import usePartnerStore from "../../store/usePartnerStore";
 import useAuthStore from "../../store/useAuthStore";
 import { CLINICS } from "../../data/mock";
 import { useToast } from "../../components/ui/Toast";
 import PriceHistory from "../../components/shared/PriceHistory";
+import { partnersApi, priceItemsApi } from "../../api";
+import { toClinicCard, toServiceItem } from "../../lib/partnerCard";
 import { formatNumber, formatDate } from "../../lib/format";
 
 // Строка прайса с разворачиваемой историей цен (видна всем пользователям).
-function ServiceRow({ item }) {
+// loadHistory(itemId) → массив {resident,nonResident,date} (лениво, при раскрытии).
+function ServiceRow({ item, loadHistory }) {
   const [open, setOpen] = useState(false);
-  const changes = item.history?.length || 0;
+  const [hist, setHist] = useState(item.history || null);
+
+  const toggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (next && hist == null && loadHistory) {
+      try {
+        setHist(await loadHistory(item.id));
+      } catch {
+        setHist([]);
+      }
+    }
+  };
+
+  const withHistory = { ...item, history: hist || [] };
+  const versions = (hist || item.history || []).length;
+
   return (
     <div className="rounded-[14px] bg-white/[0.025] border border-white/[0.07] overflow-hidden">
       <div className="flex items-center gap-3 p-4">
         <div className="flex-1 min-w-0">
           <div className="text-[14.5px] font-semibold truncate">{item.name}</div>
-          <div className="text-[12px] text-ink/45 mt-[2px]">
-            {item.category} · действует с {formatDate(item.effectiveDate)}
-          </div>
+          <div className="text-[12px] text-ink/45 mt-[2px]">{item.category} · действует с {formatDate(item.effectiveDate)}</div>
         </div>
         <div className="text-right shrink-0">
           <div className="text-[15px] font-bold tabular-nums text-success-soft">{formatNumber(item.resident)} ₸</div>
           <div className="text-[12px] text-ink/45">нерезидент {formatNumber(item.nonResident)} ₸</div>
         </div>
         <button
-          onClick={() => setOpen((v) => !v)}
-          className={`grid place-items-center w-9 h-9 rounded-[10px] border text-[12px] font-semibold shrink-0 transition-colors ${open ? "bg-primary/[0.14] border-primary/30 text-lav" : "bg-white/5 border-white/10 text-ink/60 hover:bg-white/[0.09]"}`}
+          onClick={toggle}
+          className={`grid place-items-center w-9 h-9 rounded-[10px] border shrink-0 transition-colors ${open ? "bg-primary/[0.14] border-primary/30 text-lav" : "bg-white/5 border-white/10 text-ink/60 hover:bg-white/[0.09]"}`}
           title="История цен"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
@@ -35,9 +52,9 @@ function ServiceRow({ item }) {
       {open && (
         <div className="px-4 pb-4 pt-1 border-t border-white/[0.06] animate-fade-up">
           <div className="text-[12px] font-semibold text-ink/55 my-2">
-            История изменения цены{changes ? ` · ${changes + 1} версии` : ""}
+            История изменения цены{versions ? ` · ${versions + 1} версии` : ""}
           </div>
-          <PriceHistory item={item} />
+          <PriceHistory item={withHistory} />
         </div>
       )}
     </div>
@@ -49,24 +66,60 @@ export default function PartnerPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const { role, partnerId } = useAuthStore();
+  const store = usePartnerStore();
 
-  // Источник правды — стор партнёров (туда же пишет кабинет клиники).
-  const clinic = usePartnerStore((s) => s.clinics[id]) || CLINICS.find((c) => c.id === id);
-  const services = usePartnerStore((s) => s.prices[id] || []);
+  const [clinic, setClinic] = useState(null);
+  const [items, setItems] = useState([]);
+  const [source, setSource] = useState("local");
+
+  // Загрузка: сначала бэкенд (видно всем), иначе локальный фолбэк.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [partner, price] = await Promise.all([partnersApi.get(id), partnersApi.services(id)]);
+        if (!alive) return;
+        setClinic(toClinicCard(partner));
+        setItems((price?.items || []).map(toServiceItem));
+        setSource("api");
+        return;
+      } catch {
+        // нет бэкенда — берём из локального стора/демо
+      }
+      if (!alive) return;
+      setClinic(store.getClinic(id) || CLINICS.find((c) => c.id === id) || null);
+      setItems(store.getServices(id));
+      setSource("local");
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // История цен: из API (лениво) или уже встроена в локальный item.
+  const loadHistory = async (itemId) => {
+    if (source !== "api") {
+      const it = store.getServices(id).find((s) => s.id === itemId);
+      return it?.history || [];
+    }
+    const res = await priceItemsApi.history(itemId);
+    return (res?.history || []).map((h) => ({
+      resident: h.price_resident_kzt ?? 0,
+      nonResident: h.price_nonresident_kzt ?? 0,
+      date: h.effective_date,
+    }));
+  };
 
   if (!clinic) {
     return (
       <section className="animate-fade-up">
-        <div className="p-8 text-center text-ink/50">Клиника не найдена.</div>
+        <div className="p-8 text-center text-ink/50">Загрузка клиники…</div>
       </section>
     );
   }
 
-  // Это моя клиника? (партнёр смотрит свою страницу) → даём кнопку редактирования.
   const isOwner = role === "partner" && partnerId === id;
-  // Дата актуальности = самая поздняя дата среди позиций.
-  const latestDate = services.map((s) => s.effectiveDate).filter(Boolean).sort().pop();
-  const cheapest = services.reduce((min, s) => (min == null || s.resident < min ? s.resident : min), null);
+  const latestDate = items.map((s) => s.effectiveDate).filter(Boolean).sort().pop();
+  const cheapest = items.reduce((min, s) => (min == null || s.resident < min ? s.resident : min), null);
 
   return (
     <section className="flex flex-col gap-5 animate-fade-up">
@@ -105,8 +158,8 @@ export default function PartnerPage() {
       <div className="grid sm:grid-cols-3 gap-[14px]">
         {[
           { label: "Город", value: clinic.city || "—", icon: <><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11Z" /><circle cx="12" cy="10" r="2.5" /></> },
-          { label: "Телефон", value: clinic.phone || "+7 (727) 350-12-00", icon: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L20 18l-2 2c-9 0-15-6-15-15z" /> },
-          { label: "Email", value: clinic.email || "info@clinic.kz", icon: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></> },
+          { label: "Телефон", value: clinic.phone || clinic.contact_phone || "+7 (727) 350-12-00", icon: <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L20 18l-2 2c-9 0-15-6-15-15z" /> },
+          { label: "Email", value: clinic.email || clinic.contact_email || "info@clinic.kz", icon: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></> },
         ].map((c) => (
           <div key={c.label} className="flex items-center gap-3 px-4 py-4 rounded-[16px] bg-white/[0.025] border border-white/[0.07]">
             <span className="grid place-items-center w-10 h-10 rounded-[11px] bg-primary/[0.12] border border-primary/25 shrink-0">
@@ -133,12 +186,18 @@ export default function PartnerPage() {
           </div>
         </div>
         <div className="p-3 flex flex-col gap-[10px]">
-          <div className="px-1 text-[12px] text-ink/40">
-            Нажмите на <span className="text-lav">часы</span> у позиции, чтобы посмотреть, как менялась цена.
-          </div>
-          {services.map((it) => (
-            <ServiceRow key={it.id} item={it} />
-          ))}
+          {items.length === 0 ? (
+            <div className="p-6 text-center text-ink/40 text-[14px]">В прайсе пока нет позиций.</div>
+          ) : (
+            <>
+              <div className="px-1 text-[12px] text-ink/40">
+                Нажмите на <span className="text-lav">часы</span> у позиции, чтобы посмотреть, как менялась цена.
+              </div>
+              {items.map((it) => (
+                <ServiceRow key={it.id} item={it} loadHistory={loadHistory} />
+              ))}
+            </>
+          )}
         </div>
       </div>
     </section>

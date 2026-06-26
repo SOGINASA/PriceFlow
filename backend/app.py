@@ -16,6 +16,32 @@ migrate = Migrate()
 jwt = JWTManager()
 
 
+def _ensure_columns():
+    """Лёгкая авто-миграция: добавляет новые колонки в уже существующие таблицы
+    (users.partner_id, partners.description), чтобы не требовать пересоздания БД.
+    Для полноценных миграций используйте Flask-Migrate (flask db migrate)."""
+    from sqlalchemy import inspect, text
+    insp = inspect(db.engine)
+    tables = set(insp.get_table_names())
+    wanted = [
+        ('users', 'partner_id', 'VARCHAR(36)'),
+        ('partners', 'description', 'VARCHAR(1000)'),
+    ]
+    for table, column, ddl in wanted:
+        if table not in tables:
+            continue
+        existing = {c['name'] for c in insp.get_columns(table)}
+        if column in existing:
+            continue
+        try:
+            db.session.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {ddl}'))
+            db.session.commit()
+            print(f"[migrate] added {table}.{column}")
+        except Exception as e:  # noqa: BLE001
+            db.session.rollback()
+            print(f"[migrate] skip {table}.{column}: {e}")
+
+
 def create_app(config_object=None):
     app = Flask(__name__)
     app.config.from_object(config_object or get_config())
@@ -32,6 +58,7 @@ def create_app(config_object=None):
 
     with app.app_context():
         db.create_all()
+        _ensure_columns()  # лёгкая авто-миграция новых колонок для уже созданных БД
         # Авто-сид при первом запуске (идемпотентно). В тестах не наполняем.
         if not app.config.get('TESTING'):
             try:
@@ -51,8 +78,10 @@ def create_app(config_object=None):
     from routes.analytics import analytics_bp
     from routes.admin import admin_bp
     from routes.docs import docs_bp
+    from routes.partner_portal import portal_bp
 
     app.register_blueprint(docs_bp, url_prefix='/api')           # /api/docs, /api/openapi.json
+    app.register_blueprint(portal_bp, url_prefix='/api')         # /me, /me/items, /price-items/.../history
     app.register_blueprint(catalog_bp, url_prefix='/api/catalog')
     app.register_blueprint(upload_bp, url_prefix='/api/archives')
     app.register_blueprint(services_bp, url_prefix='/api/services')

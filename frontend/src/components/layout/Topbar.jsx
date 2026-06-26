@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import useAuthStore from "../../store/useAuthStore";
 import useUIStore from "../../store/useUIStore";
 import { CLINICS } from "../../data/mock";
+import { adminApi } from "../../api";
 import { SCREEN_META } from "./navItems";
 
 // ---------- Верхняя панель ----------
@@ -10,17 +11,22 @@ import { SCREEN_META } from "./navItems";
 // (аватар открывает профиль-шит). Учитывает safe-area сверху.
 export default function Topbar({ screen }) {
   const navigate = useNavigate();
-  const { user, role, partnerId, setRole, enterPartner } = useAuthStore();
+  const { user, role, partnerId, setRole, enterPartner, setSession } = useAuthStore();
   const { openProfile, unreadCount } = useUIStore();
   const [title, subtitle] = SCREEN_META[screen] || SCREEN_META.upload;
 
-  // Смена роли (демо-переключатель). Партнёр привязывается к клинике и уходит
-  // в свой кабинет; остальные роли — на общую главную при необходимости.
-  const changeRole = (next) => {
+  // Смена роли (демо-переключатель). Для партнёра пробуем реальный вход в бэкенд
+  // (демо-аккаунт клиники «Альфа»), при недоступности — локальный фолбэк.
+  const changeRole = async (next) => {
     if (next === "partner") {
-      const cid = partnerId || "alpha";
-      const clinic = CLINICS.find((c) => c.id === cid);
-      enterPartner({ partnerId: cid, name: clinic?.name || "Клиника" });
+      try {
+        const res = await adminApi.login({ username: "partner@alfa.kz", password: "partner123" });
+        setSession({ user: { name: res.user?.full_name || "Партнёр", email: "partner@alfa.kz" }, role: "partner", token: res.access_token, partnerId: res.user?.partner_id || null });
+      } catch {
+        const cid = partnerId || "alpha";
+        const clinic = CLINICS.find((c) => c.id === cid);
+        enterPartner({ partnerId: cid, name: clinic?.name || "Клиника" });
+      }
       navigate("/app/my-prices");
       return;
     }

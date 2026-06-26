@@ -24,6 +24,12 @@ DEFAULT_USERS = [
     ('aliya@medarchive.kz',    'Алия Нурлан',             Role.USER,     'user123'),
 ]
 
+# Партнёрские аккаунты: (email, ФИО, пароль, название клиники для привязки)
+DEFAULT_PARTNER_USERS = [
+    ('partner@alfa.kz', 'Кабинет · Клиника «Альфа»', 'partner123', 'Клиника «Альфа»'),
+    ('partner@city.kz', 'Кабинет · Медцентр «Сити»', 'partner123', 'Медцентр «Сити»'),
+]
+
 # ---------------------------------------------------------------------------
 # Целевой справочник услуг: (название, категория, синонимы, базовая цена KZT)
 # ---------------------------------------------------------------------------
@@ -172,20 +178,43 @@ def _seed_partners_and_prices(services):
     return len(PARTNERS), items_total
 
 
+def _seed_partner_users():
+    """Создать аккаунты партнёров и привязать к клиникам (по названию).
+    Идемпотентно по email — добавляет даже в уже наполненную БД."""
+    added = 0
+    for email, name, password, clinic_name in DEFAULT_PARTNER_USERS:
+        clinic = Partner.query.filter_by(name=clinic_name).first()
+        if not clinic:
+            continue
+        user = User.query.filter(db.func.lower(User.email) == email.lower()).first()
+        if not user:
+            user = User(email=email, full_name=name, role=Role.PARTNER)
+            user.set_password(password)
+            db.session.add(user)
+            added += 1
+        # всегда поддерживаем привязку и роль актуальными
+        user.role = Role.PARTNER
+        user.partner_id = clinic.partner_id
+    return added
+
+
 def seed_all():
     """Идемпотентно наполнить БД. Возвращает словарь с количеством добавленного."""
     users = _seed_users()
     services = _seed_services()
     partners, items = _seed_partners_and_prices(services)
+    db.session.flush()  # партнёры должны существовать до привязки аккаунтов
+    partner_users = _seed_partner_users()
     db.session.commit()
 
     summary = {
         'users_added': users,
+        'partner_users_added': partner_users,
         'services_total': len(services),
         'partners_added': partners,
         'price_items_added': items,
     }
-    if any([users, partners, items]):
+    if any([users, partner_users, partners, items]):
         print(f"[seed] {summary}")
     return summary
 

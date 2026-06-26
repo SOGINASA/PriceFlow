@@ -1,6 +1,5 @@
 import { useState } from "react";
-import usePartnerStore from "../../store/usePartnerStore";
-import useAuthStore from "../../store/useAuthStore";
+import { usePartnerCabinet } from "../../hooks/usePartnerCabinet";
 import { useToast } from "../../components/ui/Toast";
 import PriceHistory from "../../components/shared/PriceHistory";
 import { formatNumber, formatDate } from "../../lib/format";
@@ -22,11 +21,8 @@ function Input({ label, ...props }) {
 
 export default function MyPricesPage() {
   const toast = useToast();
-  const partnerId = useAuthStore((s) => s.partnerId) || "alpha";
-
-  // Реактивная подписка на прайс этой клиники.
-  const services = usePartnerStore((s) => s.prices[partnerId] || []);
-  const { addService, updatePrice, updateService, removeService } = usePartnerStore();
+  // Данные и действия: бэкенд (если вошли партнёром) или локальный фолбэк.
+  const { items: services, addService, updatePrice, updateService, removeService } = usePartnerCabinet();
 
   const [adding, setAdding] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", category: "", resident: "", nonResident: "", effectiveDate: todayISO() });
@@ -36,16 +32,27 @@ export default function MyPricesPage() {
   const [infoForm, setInfoForm] = useState({ name: "", category: "" });
   const [openHistory, setOpenHistory] = useState(null);
 
+  // Обёртка: показать ошибку, если действие (API) упало.
+  const run = async (fn, okMsg) => {
+    try {
+      await fn();
+      if (okMsg) toast(okMsg);
+    } catch {
+      toast("Не удалось сохранить — проверьте подключение к серверу");
+    }
+  };
+
   // --- добавление ---
   const submitAdd = () => {
     if (!addForm.name.trim() || !addForm.resident) {
       toast("Укажите название и цену резидента");
       return;
     }
-    addService(partnerId, addForm);
-    setAddForm({ name: "", category: "", resident: "", nonResident: "", effectiveDate: todayISO() });
-    setAdding(false);
-    toast("Услуга добавлена");
+    run(async () => {
+      await addService(addForm);
+      setAddForm({ name: "", category: "", resident: "", nonResident: "", effectiveDate: todayISO() });
+      setAdding(false);
+    }, "Услуга добавлена");
   };
 
   // --- изменение цены ---
@@ -53,27 +60,20 @@ export default function MyPricesPage() {
     setEditPriceId(it.id);
     setPriceForm({ resident: it.resident, nonResident: it.nonResident, effectiveDate: todayISO() });
   };
-  const submitPrice = (id) => {
-    updatePrice(partnerId, id, priceForm);
-    setEditPriceId(null);
-    toast("Цена обновлена · прежняя сохранена в истории");
-  };
+  const submitPrice = (id) =>
+    run(async () => { await updatePrice(id, priceForm); setEditPriceId(null); }, "Цена обновлена · прежняя сохранена в истории");
 
   // --- редактирование названия ---
   const startEditInfo = (it) => {
     setEditInfoId(it.id);
     setInfoForm({ name: it.name, category: it.category });
   };
-  const submitInfo = (id) => {
-    updateService(partnerId, id, { name: infoForm.name.trim() || "Без названия", category: infoForm.category });
-    setEditInfoId(null);
-    toast("Сохранено");
-  };
+  const submitInfo = (id) =>
+    run(async () => { await updateService(id, { name: infoForm.name.trim() || "Без названия", category: infoForm.category }); setEditInfoId(null); }, "Сохранено");
 
   const onDelete = (it) => {
     if (window.confirm(`Удалить «${it.name}» из прайса?`)) {
-      removeService(partnerId, it.id);
-      toast("Удалено");
+      run(() => removeService(it.id), "Удалено");
     }
   };
 

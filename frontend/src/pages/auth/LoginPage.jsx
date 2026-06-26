@@ -28,19 +28,22 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   // Вход по email/паролю через бэкенд (POST /api/admin/login).
-  // Доступен операторам и админам; обычный демо-вход — через OAuth-кнопки ниже.
+  // Доступен операторам, админам и партнёрам (клиникам). Маршрут зависит от роли.
   const handleLogin = async () => {
     if (busy) return;
     setError("");
     setBusy(true);
     try {
       const res = await adminApi.login({ username: email, password });
+      const role = res.user?.role || "admin";
       setSession({
         user: { name: res.user?.full_name || email, email },
-        role: res.user?.role || "admin",
+        role,
         token: res.access_token,
+        partnerId: res.user?.partner_id || null,
       });
-      navigate("/app/verification");
+      // Партнёр → его кабинет; оператор/админ → очередь верификации.
+      navigate(role === "partner" ? "/app/my-prices" : "/app/verification");
     } catch (e) {
       setError("Неверный email или пароль");
     } finally {

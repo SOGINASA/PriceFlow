@@ -78,6 +78,7 @@ class Partner(db.Model):
     bin = db.Column(db.String(12), index=True)           # БИН организации (для дедупликации)
     contact_email = db.Column(db.String(120))
     contact_phone = db.Column(db.String(50))
+    description = db.Column(db.String(1000))             # описание/специализация (кабинет партнёра)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=_utc_now)
     updated_at = db.Column(db.DateTime, default=_utc_now, onupdate=_utc_now)
@@ -94,6 +95,7 @@ class Partner(db.Model):
             'bin': self.bin,
             'contact_email': self.contact_email,
             'contact_phone': self.contact_phone,
+            'description': self.description,
             'is_active': self.is_active,
             'created_at': _iso(self.created_at),
             'updated_at': _iso(self.updated_at),
@@ -220,7 +222,8 @@ class Role:
     USER = 'user'
     OPERATOR = 'operator'   # верифицирует очереди
     ADMIN = 'admin'
-    ALL = (USER, OPERATOR, ADMIN)
+    PARTNER = 'partner'     # клиника редактирует свой прайс (кабинет партнёра)
+    ALL = (USER, OPERATOR, ADMIN, PARTNER)
 
 
 class User(db.Model):
@@ -232,6 +235,8 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     full_name = db.Column(db.String(120))
     role = db.Column(db.String(20), default=Role.USER, index=True)
+    # Для роли partner — клиника, которой управляет пользователь.
+    partner_id = db.Column(db.String(36), db.ForeignKey('partners.partner_id'), nullable=True, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=_utc_now)
@@ -249,6 +254,7 @@ class User(db.Model):
             'email': self.email,
             'full_name': self.full_name,
             'role': self.role,
+            'partner_id': self.partner_id,
             'is_active': self.is_active,
             'created_at': _iso(self.created_at),
         }

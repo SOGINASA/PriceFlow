@@ -26,23 +26,27 @@ export const partnersApi = {
   services: (partnerId) => api.get(`/partners/${partnerId}/services`),
 };
 
-// --- Кабинет партнёра (самообслуживание клиники) ---
-// Эндпоинты, которые нужно добавить на бэкенде для роли "partner".
-// Сейчас данные ведутся во фронтовом сторе usePartnerStore (демо); при
-// появлении API заменить вызовы стора на эти методы.
-// При изменении цены бэкенд должен архивировать прежнюю в PriceItemHistory
-// (история цен по датам уже есть в модели — ТЗ 4.4 / 5).
-export const partnerSelfApi = {
-  // PATCH /partners/{id} — обновить профиль клиники (контакты, описание)
-  updateProfile: (partnerId, payload) => api.patch(`/partners/${partnerId}`, payload),
-  // POST /partners/{id}/items — добавить позицию прайса
-  addItem: (partnerId, payload) => api.post(`/partners/${partnerId}/items`, payload),
-  // PATCH /price-items/{itemId} — изменить цену (старая → в историю)
-  updatePrice: (itemId, payload) => api.patch(`/price-items/${itemId}`, payload),
-  // DELETE /price-items/{itemId} — удалить/деактивировать позицию
-  removeItem: (itemId) => api.delete(`/price-items/${itemId}`),
-  // GET /price-items/{itemId}/history — история цен позиции (видна всем)
-  priceHistory: (itemId) => api.get(`/price-items/${itemId}/history`),
+// --- Кабинет партнёра (роль partner, требует JWT) ---
+// Бэкенд хранит данные в БД, при изменении цены прежняя уходит в
+// PriceItemHistory (история цен по датам — видна всем, ТЗ 4.4 / 5).
+export const meApi = {
+  // GET /me — текущий пользователь + его клиника
+  get: () => api.get("/me"),
+  // PATCH /me/clinic — обновить профиль своей клиники
+  updateClinic: (payload) => api.patch("/me/clinic", payload),
+  // GET /me/items — прайс своей клиники (с историей цен)
+  items: () => api.get("/me/items"),
+  // POST /me/items — добавить услугу/препарат
+  addItem: (payload) => api.post("/me/items", payload),
+  // PATCH /me/items/{itemId} — изменить цену/название (старая цена → в историю)
+  updateItem: (itemId, payload) => api.patch(`/me/items/${itemId}`, payload),
+  // DELETE /me/items/{itemId} — убрать позицию
+  removeItem: (itemId) => api.delete(`/me/items/${itemId}`),
+};
+
+// --- Публичная история цен позиции (без авторизации, видна всем) ---
+export const priceItemsApi = {
+  history: (itemId) => api.get(`/price-items/${itemId}/history`),
 };
 
 // --- Поиск ---

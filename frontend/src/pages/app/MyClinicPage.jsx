@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import usePartnerStore from "../../store/usePartnerStore";
-import useAuthStore from "../../store/useAuthStore";
+import { usePartnerCabinet } from "../../hooks/usePartnerCabinet";
 import { useToast } from "../../components/ui/Toast";
 
 function Field({ label, textarea, ...props }) {
@@ -26,23 +25,25 @@ function Field({ label, textarea, ...props }) {
 
 export default function MyClinicPage() {
   const toast = useToast();
-  const partnerId = useAuthStore((s) => s.partnerId) || "alpha";
-  const clinic = usePartnerStore((s) => s.clinics[partnerId]);
-  const updateClinic = usePartnerStore((s) => s.updateClinic);
-
+  const { clinic, updateClinic } = usePartnerCabinet();
   const [form, setForm] = useState(clinic);
-  // Синхронизируем форму при смене клиники.
-  useEffect(() => setForm(clinic), [clinic, partnerId]);
+
+  // Синхронизируем форму, когда клиника загрузится/сменится.
+  useEffect(() => setForm(clinic), [clinic]);
 
   if (!form) return null;
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
-  const save = () => {
-    updateClinic(partnerId, {
-      name: form.name, city: form.city, address: form.address,
-      phone: form.phone, email: form.email, description: form.description,
-    });
-    toast("Профиль клиники сохранён");
+  const save = async () => {
+    try {
+      await updateClinic({
+        name: form.name, city: form.city, address: form.address,
+        phone: form.phone, email: form.email, description: form.description,
+      });
+      toast("Профиль клиники сохранён");
+    } catch {
+      toast("Не удалось сохранить — проверьте подключение к серверу");
+    }
   };
 
   return (
@@ -58,7 +59,7 @@ export default function MyClinicPage() {
             <div className="text-[13px] text-ink/50 truncate">{form.city}</div>
           </div>
         </div>
-        <Link to={`/app/partner/${partnerId}`} className="inline-flex items-center gap-2 px-3 py-2 rounded-[10px] bg-white/5 border border-white/10 text-[12.5px] font-semibold hover:bg-white/[0.09] shrink-0">
+        <Link to={`/app/partner/${clinic.id}`} className="inline-flex items-center gap-2 px-3 py-2 rounded-[10px] bg-white/5 border border-white/10 text-[12.5px] font-semibold hover:bg-white/[0.09] shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
           Публичная страница
         </Link>
