@@ -6,12 +6,54 @@ import { archivesApi } from "../../api";
 const RING_CIRC = 553; // длина прогресс-кольца (r=88)
 const PHASES = ["Загрузка", "Распознавание", "Нормализация", "Сравнение"];
 
+// Последовательная отправка прайсов на бэкенд (sync). ZIP идёт в поле "file"
+// (бэкенд его распакует), остальные файлы — одним запросом в поле "files".
+// Запросы строго по очереди: SQLite не переносит параллельных писателей
+// (иначе "database is locked").
+async function uploadPending(pending) {
+  const isZip = (f) => f.name.toLowerCase().endsWith(".zip");
+  const zips = pending.files.filter(isZip);
+  const loose = pending.files.filter((f) => !isZip(f));
+  const addMeta = (fd) => {
+    if (pending.partnerName) fd.append("partner_name", pending.partnerName);
+    if (pending.city) fd.append("city", pending.city);
+    return fd;
+  };
+
+  const tasks = [];
+  zips.forEach((zip) => tasks.push(() => {
+    const fd = new FormData();
+    fd.append("file", zip, zip.name);
+    return archivesApi.upload(addMeta(fd), { sync: true });
+  }));
+  if (loose.length) tasks.push(() => {
+    const fd = new FormData();
+    loose.forEach((f) => fd.append("files", f, f.name));
+    return archivesApi.upload(addMeta(fd), { sync: true });
+  });
+
+  const ids = [];
+  let anyOk = false;
+  for (const task of tasks) {
+    try {
+      const res = await task();
+      anyOk = true;
+      ids.push(...(res?.doc_ids || []));
+    } catch {
+      /* битый архив/файл — пропускаем, остальные обрабатываем */
+    }
+  }
+  if (!anyOk) throw new Error("upload failed");
+  return { ids, zipCount: zips.length };
+}
+
 export default function AnalyzingPage() {
   const navigate = useNavigate();
   const [percent, setPercent] = useState(0);
   const [logLines, setLogLines] = useState([]);
   const doneRef = useRef(false);   // обработка завершена → кольцо доезжает до 100%
   const navigatedRef = useRef(false);
+  const uploadRef = useRef(null);  // промис загрузки — чтобы запустить её ровно раз
 
   // Синхронная обработка происходит ПРЯМО ЗДЕСЬ: отправляем файлы на бэкенд
   // (sync=1), пока запрос выполняется — кольцо «упирается» в 92%. Бэкенд за этот
@@ -42,69 +84,36 @@ export default function AnalyzingPage() {
       });
     }, 70);
 
-    (async () => {
-      try {
-        // Бэкенд распаковывает ZIP только если он пришёл в поле "file"; обычные
-        // прайсы — в поле "files". Поэтому каждый .zip шлём отдельным запросом
-        // (поле file), а все не-zip файлы — одним запросом (поле files).
-        const isZip = (f) => f.name.toLowerCase().endsWith(".zip");
-        const zips = pending.files.filter(isZip);
-        const loose = pending.files.filter((f) => !isZip(f));
+    // Запускаем загрузку РОВНО ОДИН раз — даже при двойном маунте StrictMode в dev
+    // (иначе уходят два параллельных запроса → "database is locked" на SQLite).
+    if (!uploadRef.current) uploadRef.current = uploadPending(pending);
 
-        const withMeta = (fd) => {
-          if (pending.partnerName) fd.append("partner_name", pending.partnerName);
-          if (pending.city) fd.append("city", pending.city);
-          return fd;
-        };
-
-        const requests = [];
-        zips.forEach((zip) => {
-          const fd = new FormData();
-          fd.append("file", zip, zip.name);
-          requests.push(archivesApi.upload(withMeta(fd), { sync: true }));
-        });
-        if (loose.length) {
-          const fd = new FormData();
-          loose.forEach((f) => fd.append("files", f, f.name));
-          requests.push(archivesApi.upload(withMeta(fd), { sync: true }));
-        }
-        if (zips.length) pushLog(`Распаковка ZIP-архивов: ${zips.length}`);
-
-        // allSettled — один битый архив не должен ронять обработку остальных.
-        const settled = await Promise.allSettled(requests);
+    uploadRef.current
+      .then(async ({ ids, zipCount }) => {
         if (!alive) return;
-        const ids = [];
-        let anyOk = false;
-        settled.forEach((s) => {
-          if (s.status === "fulfilled") { anyOk = true; ids.push(...(s.value?.doc_ids || [])); }
-        });
-        if (!anyOk) throw new Error("upload failed");
-
-        const statuses = await Promise.all(
-          ids.map((id) => archivesApi.status(id).catch(() => null))
-        );
-        if (!alive) return;
-
+        if (zipCount) pushLog(`Распаковано ZIP-архивов: ${zipCount}`);
+        // статусы документов читаем по очереди (без параллельных запросов к БД)
         let totalItems = 0;
-        statuses.forEach((d) => {
-          if (!d) return;
-          const fmt = (d.file_format || "файл").toUpperCase();
+        for (const id of ids) {
+          const d = await archivesApi.status(id).catch(() => null);
+          if (!alive) return;
+          if (!d) continue;
           if (d.parse_status === "error") {
             pushLog(`Ошибка обработки · ${d.file_name}`);
           } else {
             totalItems += d.items_count ?? 0;
-            pushLog(`${fmt} · ${d.file_name} → ${d.items_count ?? 0} позиций`);
+            pushLog(`${(d.file_format || "файл").toUpperCase()} · ${d.file_name} → ${d.items_count ?? 0} позиций`);
           }
-        });
+        }
         pushLog("Нормализация и сравнение цен · готово");
         pushLog(`Всего позиций в базе: ${totalItems}`);
         doneRef.current = true;
-      } catch (e) {
+      })
+      .catch(() => {
         if (!alive) return;
         pushLog("Не удалось обработать файлы — проверьте бэкенд");
         setTimeout(() => { if (alive) navigate("/app/upload", { replace: true }); }, 1800);
-      }
-    })();
+      });
 
     return () => {
       alive = false;
