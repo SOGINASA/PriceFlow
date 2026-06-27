@@ -56,6 +56,13 @@ def _cell_text(cell) -> str:
 
 def extract(file_path: str) -> ExtractResult:
     result = ExtractResult()
+    # Старый бинарный .doc — python-docx (OOXML) его не читает. Не отдаём
+    # пользователю невнятную ошибку парсинга, а сразу объясняем, что делать.
+    if file_path.lower().endswith('.doc') and not file_path.lower().endswith('.docx'):
+        result.warnings.append(
+            'Формат .doc (старый Word) не поддерживается — пересохраните файл как .docx')
+        return result
+
     try:
         from docx import Document
     except ImportError:

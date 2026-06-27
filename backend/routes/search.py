@@ -2,8 +2,14 @@
 
 GET /api/search?q=...
 
-MVP — ILIKE по именам. На PostgreSQL рекомендуется заменить на FTS
-(to_tsvector/plainto_tsquery) или вынести в MeiliSearch/Elasticsearch.
+Многословный поиск: запрос разбивается на слова, и каждое слово должно встретиться
+(в любом порядке) — у услуги в названии ИЛИ синонимах, у клиники в названии, городе
+или адресе. Так «узи почек алматы» найдётся независимо от порядка слов.
+
+Регистронезависимость — на стороне Python через casefold(): SQLite LIKE/ILIKE не
+учитывает регистр кириллицы («Консультация»≈«консультация»). На больших объёмах под
+PostgreSQL рекомендуется FTS (to_tsvector/plainto_tsquery) или MeiliSearch/Elasticsearch
+— структура ответа не изменится.
 """
 from flask import Blueprint, request, jsonify
 
@@ -16,23 +22,25 @@ search_bp = Blueprint('search', __name__)
 @search_bp.route('', methods=['GET'])
 def search():
     q = (request.args.get('q') or '').strip()
-    if not q:
-        return jsonify({'services': [], 'partners': []})
-
-    # Регистронезависимый поиск на стороне Python: SQLite LIKE/ILIKE не учитывает
-    # регистр кириллицы. casefold() корректно сравнивает «Консультация»≈«консультация».
-    # Заодно ищем по синонимам услуги и по городу клиники.
-    ql = q.casefold()
+    terms = [t.casefold() for t in q.split() if t]
+    if not terms:
+        return jsonify({'query': q, 'services': [], 'partners': []})
 
     def svc_match(s):
-        if ql in (s.service_name or '').casefold():
-            return True
-        return any(ql in str(syn).casefold() for syn in (s.synonyms or []))
+        # для услуги каждое слово запроса должно быть в названии или в одном из синонимов
+        haystacks = [(s.service_name or '').casefold()]
+        haystacks += [str(syn).casefold() for syn in (s.synonyms or [])]
+        return all(any(term in h for h in haystacks) for term in terms)
+
+    def partner_match(p):
+        # для клиники — в названии, городе или адресе
+        haystacks = [(p.name or '').casefold(), (p.city or '').casefold(),
+                     (p.address or '').casefold()]
+        return all(any(term in h for h in haystacks) for term in terms)
 
     services = [s for s in Service.query.filter(Service.is_active.is_(True)).limit(2000).all()
                 if svc_match(s)][:50]
-    partners = [p for p in Partner.query.limit(2000).all()
-                if ql in (p.name or '').casefold() or ql in (p.city or '').casefold()][:50]
+    partners = [p for p in Partner.query.limit(2000).all() if partner_match(p)][:50]
 
     # к каждой найденной услуге — краткая сводка цен для перехода в сравнение (П.5)
     services_out = []

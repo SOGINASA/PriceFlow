@@ -46,12 +46,20 @@ def _to_grayscale(img: np.ndarray) -> np.ndarray:
     return (0.299 * r + 0.587 * g + 0.114 * b).astype(np.uint8)
 
 
-def _render_pages(file_path: str):
-    """PDF -> список изображений страниц (grayscale numpy) через PyMuPDF, без poppler.
+_IMAGE_EXTS = ('.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp')
 
-    Рендерим на Config.OCR_DPI (по умолч. 300) — мелкий шрифт таблиц читается лучше,
-    затем переводим в оттенки серого для снижения шума перед OCR.
+
+def _render_pages(file_path: str):
+    """Документ-скан -> список изображений страниц (grayscale numpy) для OCR.
+
+    PDF рендерим постранично через PyMuPDF (fitz) на Config.OCR_DPI (по умолч. 300) —
+    мелкий шрифт таблиц читается лучше; poppler не нужен. Отдельную картинку
+    (фото/скан прайса png/jpg/…) читаем напрямую через Pillow — одна «страница».
+    Затем переводим в оттенки серого для снижения шума перед OCR.
     """
+    if file_path.lower().endswith(_IMAGE_EXTS):
+        return _render_image(file_path)
+
     import fitz  # PyMuPDF
     pages = []
     with fitz.open(file_path) as pdf:
@@ -64,6 +72,14 @@ def _render_pages(file_path: str):
                 img = img.reshape(pix.height, pix.width)
             pages.append(img)
     return pages
+
+
+def _render_image(file_path: str):
+    """Одиночное изображение (фото/скан прайса) -> [grayscale numpy] через Pillow."""
+    from PIL import Image
+    with Image.open(file_path) as im:
+        img = np.asarray(im.convert('RGB'))
+    return [_to_grayscale(img)]
 
 
 def extract(file_path: str) -> ExtractResult:

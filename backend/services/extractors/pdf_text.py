@@ -15,31 +15,13 @@ import re
 
 from services.extractors import ExtractResult, RawRow
 from services.extractors.row_parser import (
-    parse_table_row, looks_like_header, group_boxes_to_rows, parse_ocr_row,
+    parse_table_row, looks_like_header, parse_ocr_row,
 )
 
 logger = logging.getLogger(__name__)
 
 _MIN_WORD_PRICE = 100   # цена в ₸ ниже этого в word-fallback — это номер строки/мусор
 _DIGITS = re.compile(r'^\d+$')
-
-
-def _merge_thousands(cells):
-    """Склеить разряды числа, разбитого пробелом-разделителем тысяч.
-
-    pdfplumber бьёт «9 900» на ['9','900']. Правило: если следующая ячейка —
-    ровно 3 цифры, она продолжение предыдущего числа. Так '9'+'900'→'9900',
-    '15'+'000'→'15000', '1'+'234'+'567'→'1234567'. Две отдельные цены (4–5 цифр)
-    не склеиваются, т.к. продолжение — именно 3 цифры."""
-    out = []
-    for c in cells:
-        s = str(c).strip()
-        if (out and _DIGITS.fullmatch(s) and len(s) == 3
-                and _DIGITS.fullmatch(out[-1])):
-            out[-1] = out[-1] + s
-        else:
-            out.append(s)
-    return out
 
 
 def _drop_index_numbers(cells):
@@ -96,24 +78,64 @@ def _rows_from_tables(page):
 def _rows_from_words(page):
     """Строки-данные из текстового PDF без табличных границ.
 
-    Группируем слова по Y-координате (как OCR-боксы), разбираем каждую строку и
-    берём только строки с ценой — так отсекаются заголовки/преамбула, которые в
-    extract_text() склеиваются с данными в нечитаемом порядке.
+    Слова группируем по Y в строки, а ВНУТРИ строки — в ячейки по
+    горизонтальному зазору (см. _cells_by_x_gap): узкий зазор — это разделитель
+    тысяч одного числа («105 000»), широкий — граница колонки. Так соседние
+    ценовые колонки «105 000 105 000 210 000» дают три цены, а не одно число-
+    монстр 10^17 (координаты надёжнее, чем угадывать тысячи по числу цифр).
+    Берём только строки с ценой — отсекаются заголовки/преамбула.
     """
     words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
     if not words:
         return []
-    # допуск по Y — около половины высоты строки (слова одной строки ближе друг к другу)
+    # масштаб шрифта = медианная высота слова; от неё пляшем пороги Y и X-зазора
     heights = sorted(w['bottom'] - w['top'] for w in words if w['bottom'] > w['top'])
-    y_tol = (heights[len(heights) // 2] * 0.6) if heights else 3.0
-    boxes = [([[w['x0'], w['top']], [w['x1'], w['top']],
-              [w['x1'], w['bottom']], [w['x0'], w['bottom']]], w['text']) for w in words]
+    h = heights[len(heights) // 2] if heights else 6.0
     rows = []
-    for cells in group_boxes_to_rows(boxes, y_tol=y_tol):
+    for row_words in _group_words_by_y(words, y_tol=h * 0.6):
+        cells = _cells_by_x_gap(row_words, gap=h * 0.6)
         if looks_like_header(cells):
             continue
-        cells = _drop_index_numbers(_merge_thousands(cells))
+        cells = _drop_index_numbers(cells)
         parsed = parse_ocr_row(cells)
         if parsed and (parsed.price_resident is not None or parsed.price_nonresident is not None):
             rows.append(parsed)
     return rows
+
+
+def _group_words_by_y(words, y_tol):
+    """Сгруппировать слова pdfplumber в строки по вертикали (центр по Y)."""
+    ws = sorted(words, key=lambda w: ((w['top'] + w['bottom']) / 2, w['x0']))
+    rows, cur, cy = [], [], None
+    for w in ws:
+        c = (w['top'] + w['bottom']) / 2
+        if cy is None or abs(c - cy) <= y_tol:
+            cur.append(w)
+            cy = c if cy is None else (cy + c) / 2
+        else:
+            rows.append(cur)
+            cur, cy = [w], c
+    if cur:
+        rows.append(cur)
+    return rows
+
+
+def _cells_by_x_gap(row_words, gap):
+    """Слова одной строки → ячейки по горизонтальному зазору.
+
+    Слова сортируем по X; новый столбец начинается, когда зазор до следующего
+    слова больше `gap`. Внутри ячейки слова склеиваются через пробел, поэтому
+    разрядка тысяч («105 000») остаётся одним числом (to_number срежет пробел),
+    а слова из разных колонок не слипаются.
+    """
+    ws = sorted(row_words, key=lambda w: w['x0'])
+    cells, cur, prev_x1 = [], [ws[0]['text']], ws[0]['x1']
+    for w in ws[1:]:
+        if w['x0'] - prev_x1 > gap:
+            cells.append(' '.join(cur))
+            cur = [w['text']]
+        else:
+            cur.append(w['text'])
+        prev_x1 = max(prev_x1, w['x1'])
+    cells.append(' '.join(cur))
+    return cells

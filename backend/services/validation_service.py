@@ -27,11 +27,33 @@ def validate_row(row, effective_date: date, log: list) -> bool:
     if row.price_resident is not None and row.price_resident <= 0:
         log.append(f'Некорректная цена резидента ({row.price_resident}) — needs_review: {row.service_name_raw}')
         row.price_resident = None
+    # Потолок правдоподобности: гигантское число — это склейка цифр при
+    # распознавании, а не цена. Обнуляем (иначе не влезает в NUMERIC(14,2) и
+    # роняет вставку всего документа на Postgres), позиция уйдёт в ревью.
+    if row.price_resident is not None and row.price_resident > Config.MAX_PLAUSIBLE_PRICE:
+        log.append(f'Неправдоподобная цена резидента ({row.price_resident}) — отброшена: {row.service_name_raw}')
+        row.price_resident = None
+    if row.price_nonresident is not None and row.price_nonresident > Config.MAX_PLAUSIBLE_PRICE:
+        log.append(f'Неправдоподобная цена нерезидента ({row.price_nonresident}) — отброшена: {row.service_name_raw}')
+        row.price_nonresident = None
     # Нерезидент >= резидент
     if (row.price_resident is not None and row.price_nonresident is not None
             and row.price_nonresident < row.price_resident):
         log.append(f'Цена нерезидента < резидента — флаг ревью: {row.service_name_raw}')
     return True
+
+
+def flag_resident_order(item: PriceItem, log: list) -> bool:
+    """Цена нерезидента < цены резидента → пометить позицию как аномалию (ТЗ 4.4).
+
+    «Предупреждение, флаг для ревью»: ставим has_anomaly, чтобы позиция попала в
+    очередь /needs-review, а не только в лог документа."""
+    res, nonres = item.price_resident_kzt, item.price_nonresident_kzt
+    if res is not None and nonres is not None and float(nonres) < float(res):
+        item.has_anomaly = True
+        log.append(f'Цена нерезидента < резидента — флаг ревью: {item.service_name_raw}')
+        return True
+    return False
 
 
 def check_price_anomaly(item: PriceItem, previous: PriceItem, log: list) -> bool:

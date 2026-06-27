@@ -16,6 +16,9 @@ yarn-error.log*
 .env.local
 .env.*.local
 
+# Локальный portable-PostgreSQL (бинарники + данные БД, см. backend/start_db.ps1)
+.localdb/
+
 # OS / editor
 .DS_Store
 .idea/

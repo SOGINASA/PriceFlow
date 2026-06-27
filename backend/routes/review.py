@@ -11,7 +11,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import verify_jwt_in_request, get_jwt, get_jwt_identity
 
 from models import db, PriceItem, Service, PriceDocument, Role
-from services.normalization_service import match_service, learn_synonym, MANUAL
+from services.normalization_service import match_batch, learn_synonym, MANUAL
 
 review_bp = Blueprint('review', __name__)
 
@@ -42,9 +42,12 @@ def unmatched():
     items = (PriceItem.query
              .filter(PriceItem.service_id.is_(None), PriceItem.is_active.is_(True))
              .limit(500).all())
+    # Подсказки считаем ОДНИМ батчем (общий индекс + один семантический энкод на
+    # весь список). Иначе на каждую из 500 позиций уходил отдельный model.encode
+    # (~2.5с) → запрос висел ~20 минут («бесконечная загрузка очереди»).
+    suggestions = match_batch([it.service_name_raw for it in items])
     out = []
-    for it in items:
-        suggestion, score, method = match_service(it.service_name_raw)
+    for it, (suggestion, score, method) in zip(items, suggestions):
         d = it.to_dict()
         d['suggestion'] = (
             {'service_id': suggestion.service_id, 'service_name': suggestion.service_name,

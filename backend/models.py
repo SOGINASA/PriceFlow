@@ -11,6 +11,7 @@
 UUID-идентификаторы хранятся как строки (db.String(36)) для совместимости
 SQLite/PostgreSQL. На Postgres при желании можно перейти на native UUID.
 """
+import time
 import uuid
 import sqlite3
 from datetime import datetime, timezone, date
@@ -18,6 +19,7 @@ from datetime import datetime, timezone, date
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError
 from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
@@ -34,6 +36,61 @@ def _set_sqlite_pragmas(dbapi_connection, _connection_record):
         cur.execute('PRAGMA busy_timeout=30000')   # ждать лок до 30с
         cur.execute('PRAGMA synchronous=NORMAL')    # безопасно для WAL, быстрее
         cur.close()
+        # Отдать управление транзакциями SQLAlchemy, чтобы ниже самим открывать
+        # их через BEGIN IMMEDIATE. Иначе pysqlite стартует транзакцию лениво и
+        # в DEFERRED: первый SELECT берёт read-снапшот, а при апгрейде до записи
+        # параллельный коммит даёт SQLITE_BUSY_SNAPSHOT — этот случай
+        # busy_timeout НЕ ждёт, и прилетает "database is locked".
+        dbapi_connection.isolation_level = None
+
+
+# Режим открытия транзакции на SQLite (per-thread):
+#   IMMEDIATE — сразу берём write-lock. Нужно ПИСАТЕЛЯМ: они честно сериализуются
+#               через busy_timeout, а не падают на busy-снапшоте при конкурентной
+#               записи (напр. несколько POST /api/me/items подряд).
+#   DEFERRED  — обычная read-транзакция. Для ЧИТАТЕЛЕЙ (GET-поллинг дашборда,
+#               списка архивов, бейджа уведомлений): в WAL читатели не берут
+#               write-lock и не конкурируют с идущей загрузкой, поэтому не ловят
+#               "database is locked", пока писатель держит запись.
+# По умолчанию IMMEDIATE — безопасно для фона/CLI/Celery, где метод запроса
+# неизвестен. Для GET-запросов app.before_request переключает на DEFERRED.
+import threading as _threading
+_tx_mode = _threading.local()
+
+
+def set_tx_mode(mode: str):
+    """'IMMEDIATE' (писатель) или 'DEFERRED' (чтение). Зовётся из before_request."""
+    _tx_mode.mode = mode if mode in ('IMMEDIATE', 'DEFERRED') else 'IMMEDIATE'
+
+
+# Сколько всего ждать write-lock писателю до отказа (сек). Покрывает время, пока
+# другой писатель в этом же процессе (напр. синхронная обработка загрузки) держит
+# IMMEDIATE: busy_timeout этот случай НЕ ждёт (мгновенный SQLITE_BUSY — защита от
+# взаимоблокировки), поэтому ретраим сами.
+_WRITE_LOCK_WAIT = 30.0
+
+
+@event.listens_for(Engine, 'begin')
+def _sqlite_begin(conn):
+    if conn.dialect.name != 'sqlite':
+        return
+    if getattr(_tx_mode, 'mode', 'IMMEDIATE') == 'DEFERRED':
+        conn.exec_driver_sql('BEGIN DEFERRED')      # читатель: лок не берём
+        return
+    # Писатель: BEGIN IMMEDIATE. При конкуренции писателей в одном процессе SQLite
+    # отдаёт "database is locked" сразу, игнорируя busy_timeout, — ретраим с backoff,
+    # пока держащий лок писатель не закоммитит/откатит.
+    deadline = time.monotonic() + _WRITE_LOCK_WAIT
+    delay = 0.05
+    while True:
+        try:
+            conn.exec_driver_sql('BEGIN IMMEDIATE')
+            return
+        except OperationalError as e:
+            if 'database is locked' not in str(e).lower() or time.monotonic() >= deadline:
+                raise
+            time.sleep(delay)
+            delay = min(delay * 1.6, 1.0)
 
 
 def _uuid():

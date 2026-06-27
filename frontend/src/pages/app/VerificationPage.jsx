@@ -69,7 +69,11 @@ export default function VerificationPage() {
       (Array.isArray(docs) ? docs : []).forEach((d) => { dmap[d.doc_id] = d.file_name; });
       setDocNames(dmap);
     } catch (e) {
-      toast("Не удалось загрузить очередь — проверьте бэкенд");
+      // 401/403 — очереди верификации доступны только админу (см. routes/review.py).
+      const msg = String(e?.message || "");
+      toast(/\b(401|403)\b/.test(msg)
+        ? "Очередь верификации доступна только администратору — войдите как admin"
+        : "Не удалось загрузить очередь — проверьте бэкенд");
     } finally {
       setLoading(false);
     }
