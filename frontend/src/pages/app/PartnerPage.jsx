@@ -22,6 +22,20 @@ function exportCsv(clinicName, services) {
   URL.revokeObjectURL(url);
 }
 
+// Подсветка совпадения поискового запроса в названии услуги.
+function highlight(text, q) {
+  if (!q) return text;
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span className="bg-primary/30 text-ink rounded px-[2px]">{text.slice(idx, idx + q.length)}</span>
+      {text.slice(idx + q.length)}
+    </>
+  );
+}
+
 export default function PartnerPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -30,6 +44,8 @@ export default function PartnerPage() {
   const [services, setServices] = useState(null); // null = загрузка
   const [effectiveDate, setEffectiveDate] = useState(null);
   const [error, setError] = useState(false);
+  const [query, setQuery] = useState(""); // поиск по прайсу
+  const [searchFocused, setSearchFocused] = useState(false);
 
   // Загрузка: сначала бэкенд (видно всем), иначе локальный фолбэк.
   useEffect(() => {
@@ -59,6 +75,10 @@ export default function PartnerPage() {
   }, [id]);
 
   const dateLabel = effectiveDate ? new Date(effectiveDate).toLocaleDateString("ru-RU") : null;
+
+  // Фильтрация прайса по названию услуги/препарата (поиск).
+  const q = query.trim().toLowerCase();
+  const filtered = (services || []).filter((s) => s.service.toLowerCase().includes(q));
 
   return (
     <section className="flex flex-col gap-5 animate-fade-up">
@@ -135,46 +155,80 @@ export default function PartnerPage() {
               <div className="p-[30px] text-center text-ink/40 text-[14px]">У этой клиники пока нет позиций в базе.</div>
             ) : (
               <>
-                {/* Десктоп: таблица */}
-                <div className="hidden md:block p-[10px]">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="text-left">
-                        {["Услуга", "Резидент", "Нерезидент"].map((h) => (
-                          <th key={h} className="px-3 py-[10px] text-[11.5px] font-semibold text-ink/40 uppercase tracking-[.04em]">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {services.map((s, i) => (
-                        <tr key={`${s.service}-${i}`} className="border-t border-white/[0.05]" style={{ animation: `fadeUpItem .4s ${i * 50}ms cubic-bezier(.16,1,.3,1) both` }}>
-                          <td className="px-3 py-[11px] text-[13.5px] font-semibold">{s.service}</td>
-                          <td className="px-3 py-[11px] text-[13.5px] text-ink/75">{s.resident} ₸</td>
-                          <td className="px-3 py-[11px] text-[13.5px] text-ink/55">{s.nonResident} ₸</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {/* Поиск по прайсу */}
+                <div className="px-[14px] pt-[14px]">
+                  <div className={`flex items-center gap-[10px] px-[14px] py-[11px] rounded-[12px] border transition-all bg-[rgba(12,12,18,0.7)] ${searchFocused ? "border-primary/60 shadow-[0_0_0_4px_rgba(94,92,230,0.12)]" : "border-white/10"}`}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <circle cx="11" cy="11" r="6.5" stroke="rgba(245,245,247,.45)" strokeWidth="1.7" />
+                      <path d="m16 16 4 4" stroke="rgba(245,245,247,.45)" strokeWidth="1.7" strokeLinecap="round" />
+                    </svg>
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onFocus={() => setSearchFocused(true)}
+                      onBlur={() => setSearchFocused(false)}
+                      placeholder="Поиск услуги или препарата в прайсе…"
+                      className="flex-1 min-w-0 bg-transparent border-none outline-none text-ink text-[14.5px] font-medium"
+                    />
+                    {query && (
+                      <button onClick={() => setQuery("")} className="grid place-items-center w-6 h-6 rounded-full bg-white/5 border border-white/10 text-ink/60 hover:text-ink shrink-0" title="Очистить">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                      </button>
+                    )}
+                  </div>
+                  <div className="px-1 mt-2 text-[12px] text-ink/40">
+                    {q ? `Найдено ${filtered.length} из ${services.length}` : `Всего позиций: ${services.length}`}
+                  </div>
                 </div>
 
-                {/* Мобайл: карточки услуг с двумя ценами */}
-                <div className="md:hidden flex flex-col divide-y divide-white/[0.05]">
-                  {services.map((s, i) => (
-                    <div key={`${s.service}-${i}`} className="p-4" style={{ animation: `fadeUpItem .4s ${i * 45}ms cubic-bezier(.16,1,.3,1) both` }}>
-                      <div className="text-[14px] font-semibold mb-3">{s.service}</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="rounded-[12px] px-3 py-[10px] bg-white/[0.03] border border-white/[0.06]">
-                          <div className="text-[11px] text-ink/45 mb-[3px]">Резидент</div>
-                          <div className="text-[14px] font-bold text-ink/85">{s.resident} ₸</div>
-                        </div>
-                        <div className="rounded-[12px] px-3 py-[10px] bg-white/[0.03] border border-white/[0.06]">
-                          <div className="text-[11px] text-ink/45 mb-[3px]">Нерезидент</div>
-                          <div className="text-[14px] font-bold text-ink/65">{s.nonResident} ₸</div>
-                        </div>
-                      </div>
+                {filtered.length === 0 ? (
+                  <div className="p-[30px] text-center text-ink/40 text-[14px]">
+                    По запросу «{query}» ничего не найдено.
+                  </div>
+                ) : (
+                  <>
+                    {/* Десктоп: таблица */}
+                    <div className="hidden md:block p-[10px]">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="text-left">
+                            {["Услуга", "Резидент", "Нерезидент"].map((h) => (
+                              <th key={h} className="px-3 py-[10px] text-[11.5px] font-semibold text-ink/40 uppercase tracking-[.04em]">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((s, i) => (
+                            <tr key={`${s.service}-${i}`} className="border-t border-white/[0.05]" style={{ animation: `fadeUpItem .4s ${Math.min(i, 12) * 40}ms cubic-bezier(.16,1,.3,1) both` }}>
+                              <td className="px-3 py-[11px] text-[13.5px] font-semibold">{highlight(s.service, q)}</td>
+                              <td className="px-3 py-[11px] text-[13.5px] text-ink/75">{s.resident} ₸</td>
+                              <td className="px-3 py-[11px] text-[13.5px] text-ink/55">{s.nonResident} ₸</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  ))}
-                </div>
+
+                    {/* Мобайл: карточки услуг с двумя ценами */}
+                    <div className="md:hidden flex flex-col divide-y divide-white/[0.05]">
+                      {filtered.map((s, i) => (
+                        <div key={`${s.service}-${i}`} className="p-4" style={{ animation: `fadeUpItem .4s ${Math.min(i, 12) * 40}ms cubic-bezier(.16,1,.3,1) both` }}>
+                          <div className="text-[14px] font-semibold mb-3">{highlight(s.service, q)}</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-[12px] px-3 py-[10px] bg-white/[0.03] border border-white/[0.06]">
+                              <div className="text-[11px] text-ink/45 mb-[3px]">Резидент</div>
+                              <div className="text-[14px] font-bold text-ink/85">{s.resident} ₸</div>
+                            </div>
+                            <div className="rounded-[12px] px-3 py-[10px] bg-white/[0.03] border border-white/[0.06]">
+                              <div className="text-[11px] text-ink/45 mb-[3px]">Нерезидент</div>
+                              <div className="text-[14px] font-bold text-ink/65">{s.nonResident} ₸</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>

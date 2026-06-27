@@ -261,15 +261,12 @@ def seed_demo():
     partner_users = _seed_partner_users()
     db.session.commit()
     summary = {
-        'users_added': users,
         'partner_users_added': partner_users,
         'services_total': len(services),
         'partners_added': partners,
         'price_items_added': items,
         'exchange_rates_added': rates,
     }
-    if any([users, partner_users, partners, items]):
-        print(f"[seed] {summary}")
     print(f"[seed:demo] {summary}")
     return summary
 
