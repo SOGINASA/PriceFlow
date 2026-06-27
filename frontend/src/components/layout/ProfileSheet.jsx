@@ -1,36 +1,18 @@
 import { useNavigate } from "react-router-dom";
 import useUIStore from "../../store/useUIStore";
 import useAuthStore from "../../store/useAuthStore";
-import { adminApi } from "../../api";
 
 // ---------- Профиль (нижний шит, мобайл) ----------
-// Открывается из нижней навигации/хедера. Содержит профиль, переключатель
-// роли, переход в аналитику (для admin), ссылку на лендинг и выход.
+// Открывается из нижней навигации/хедера. Содержит профиль, переход в аналитику
+// (для admin), ссылку на лендинг и выход.
 export default function ProfileSheet() {
   const navigate = useNavigate();
   const { profileOpen, closeProfile } = useUIStore();
-  const { user, role, partnerId, setRole, enterPartner, setSession, logout } = useAuthStore();
+  const { user, role, logout } = useAuthStore();
 
   const go = (path) => {
     closeProfile();
     navigate(path);
-  };
-
-  // Переключение роли (демо). Партнёр → реальный вход в бэкенд, иначе фолбэк.
-  const changeRole = async (next) => {
-    if (next === "partner") {
-      try {
-        const res = await adminApi.login({ username: "partner@alfa.kz", password: "partner123" });
-        setSession({ user: { name: res.user?.full_name || "Партнёр", email: "partner@alfa.kz" }, role: "partner", token: res.access_token, partnerId: res.user?.partner_id || null });
-      } catch {
-        // бэкенд недоступен — входим в демо-режим партнёра без мок-данных
-        enterPartner({ partnerId: partnerId || null, name: "Клиника" });
-      }
-      go("/app/my-prices");
-      return;
-    }
-    setRole(next);
-    if (role === "partner") go("/app/upload");
   };
 
   const handleLogout = () => {
@@ -66,25 +48,6 @@ export default function ProfileSheet() {
           <div className="min-w-0">
             <div className="text-[16px] font-semibold truncate">{user?.name || "Гость"}</div>
             <div className="text-[13px] text-ink/45 truncate">{user?.email || "—"}</div>
-          </div>
-        </div>
-
-        {/* Переключатель роли */}
-        <div className="mb-4">
-          <div className="text-[12px] font-semibold text-ink/45 mb-2">Режим</div>
-          <div className="flex gap-[3px] p-[3px] rounded-[13px] bg-white/5 border border-white/[0.08]">
-            {[["user", "Польз."], ["partner", "Партнёр"], ["admin", "Админ"]].map(([key, label]) => {
-              const on = role === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => changeRole(key)}
-                  className={`flex-1 py-[10px] rounded-[10px] text-[13px] font-semibold transition-all ${on ? "bg-primary/90 text-white" : "bg-transparent text-ink/55"}`}
-                >
-                  {label}
-                </button>
-              );
-            })}
           </div>
         </div>
 

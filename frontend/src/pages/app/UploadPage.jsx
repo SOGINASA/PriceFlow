@@ -3,15 +3,13 @@ import { useNavigate } from "react-router-dom";
 import useUploadStore from "../../store/useUploadStore";
 import { formatFileSize, fileTypeOf } from "../../lib/format";
 import FileIcon from "../../components/ui/FileIcon";
-import { archivesApi } from "../../api";
 import { useToast } from "../../components/ui/Toast";
 
 export default function UploadPage() {
   const navigate = useNavigate();
-  const { files, addFiles, removeFile, setResult } = useUploadStore();
+  const { files, addFiles, removeFile, setPending } = useUploadStore();
   const inputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [partnerName, setPartnerName] = useState("");
   const [city, setCity] = useState("");
   const toast = useToast();
@@ -20,30 +18,17 @@ export default function UploadPage() {
   const mapFiles = (list) =>
     Array.from(list).map((f) => ({ name: f.name, size: formatFileSize(f.size), type: fileTypeOf(f.name), raw: f }));
 
-  // Запуск обработки: файлы отправляем на бэкенд (sync — сразу обрабатываются
-  // и пишутся в БД), сохраняем ответ и переходим к экрану анализа, где
-  // показывается реальный журнал обработки.
-  const startProcessing = async () => {
+  // Запуск обработки: НЕ грузим здесь, а складываем задачу в стор и сразу
+  // переходим к экрану анализа. Саму синхронную загрузку на бэкенд делает он —
+  // тогда кольцо прогресса крутится во время реальной обработки.
+  const startProcessing = () => {
     const realFiles = files.map((f) => f.raw).filter(Boolean);
     if (realFiles.length === 0) {
       toast("Добавьте файлы прайсов для обработки");
       return;
     }
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      realFiles.forEach((f) => fd.append("files", f, f.name));
-      if (partnerName.trim()) fd.append("partner_name", partnerName.trim());
-      if (city.trim()) fd.append("city", city.trim());
-      const res = await archivesApi.upload(fd, { sync: true });
-      setResult(res);
-      toast(`Принято документов: ${res?.documents ?? realFiles.length}`);
-      navigate("/app/analyzing");
-    } catch (e) {
-      toast("Не удалось загрузить файлы — проверьте бэкенд");
-    } finally {
-      setUploading(false);
-    }
+    setPending({ files: realFiles, partnerName: partnerName.trim(), city: city.trim() });
+    navigate("/app/analyzing");
   };
 
   const onDrop = (e) => {
@@ -53,7 +38,7 @@ export default function UploadPage() {
     if (dropped.length) addFiles(mapFiles(dropped));
   };
 
-  const canRun = files.length > 0 && !uploading;
+  const canRun = files.length > 0;
 
   return (
     <section className="flex flex-col gap-[22px] animate-fade-up">
@@ -166,7 +151,7 @@ export default function UploadPage() {
             canRun ? "bg-brand text-white shadow-brand hover:-translate-y-[2px] hover:shadow-brand-lg" : "bg-primary/30 text-white/50 cursor-not-allowed"
           }`}
         >
-          {uploading ? "Загрузка…" : "Запустить обработку"}
+          Запустить обработку
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
         </button>
       </div>

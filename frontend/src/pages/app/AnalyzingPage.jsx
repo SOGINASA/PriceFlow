@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useUploadStore from "../../store/useUploadStore";
 import { archivesApi } from "../../api";
@@ -10,70 +10,93 @@ export default function AnalyzingPage() {
   const navigate = useNavigate();
   const [percent, setPercent] = useState(0);
   const [logLines, setLogLines] = useState([]);
+  const doneRef = useRef(false);   // обработка завершена → кольцо доезжает до 100%
+  const navigatedRef = useRef(false);
 
-  // Однократно: показываем РЕАЛЬНЫЙ журнал обработки по статусам документов,
-  // которые бэкенд уже обработал синхронно при загрузке. Прогресс-кольцо
-  // доходит до 100% только после получения реальных статусов.
+  // Синхронная обработка происходит ПРЯМО ЗДЕСЬ: отправляем файлы на бэкенд
+  // (sync=1), пока запрос выполняется — кольцо «упирается» в 92%. Бэкенд за этот
+  // запрос распознаёт, нормализует, строит справочник и пишет всё в БД. После
+  // ответа показываем реальный журнал по статусам документов и доводим до 100%.
   useEffect(() => {
-    const { result, clear } = useUploadStore.getState();
-    if (!result?.doc_ids?.length) {
+    const { pending } = useUploadStore.getState();
+    if (!pending?.files?.length) {
       navigate("/app/upload", { replace: true });
       return;
     }
 
     let alive = true;
-    let done = false;
     const log = [];
     const pushLog = (line) => {
       log.push(line);
       if (alive) setLogLines([...log].slice(-6));
     };
+    pushLog(`Файлов к обработке: ${pending.files.length}`);
 
-    pushLog(`Принято документов: ${result.documents ?? result.doc_ids.length}`);
+    // Кольцо: пока идёт обработка — асимптотически подбирается к 92%; как только
+    // ответ получен (doneRef) — доезжает до 100%.
+    const ring = setInterval(() => {
+      if (!alive) return;
+      setPercent((p) => {
+        const cap = doneRef.current ? 100 : 92;
+        return p < cap ? Math.min(cap, p + Math.max(0.3, (cap - p) * 0.05)) : p;
+      });
+    }, 70);
 
     (async () => {
-      const statuses = await Promise.all(
-        result.doc_ids.map((id) => archivesApi.status(id).catch(() => null))
-      );
-      if (!alive) return;
-      let totalItems = 0;
-      statuses.forEach((d) => {
-        if (!d) return;
-        const fmt = (d.file_format || "файл").toUpperCase();
-        if (d.parse_status === "error") {
-          pushLog(`Ошибка обработки · ${d.file_name}`);
-        } else {
-          const cnt = d.items_count ?? 0;
-          totalItems += cnt;
-          pushLog(`${fmt} · ${d.file_name} → ${cnt} позиций`);
-        }
-      });
-      pushLog("Нормализация и сравнение цен · готово");
-      pushLog(`Всего позиций в базе: ${totalItems}`);
-      done = true;
-    })();
+      try {
+        const fd = new FormData();
+        pending.files.forEach((f) => fd.append("files", f, f.name));
+        if (pending.partnerName) fd.append("partner_name", pending.partnerName);
+        if (pending.city) fd.append("city", pending.city);
 
-    // Прогресс: до получения статусов «упирается» в 92%, затем доходит до 100%.
-    let p = 0;
-    const interval = setInterval(() => {
-      const cap = done ? 100 : 92;
-      p = Math.min(cap, p + Math.random() * 6 + 3);
-      if (alive) setPercent(p);
-      if (p >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          clear();
-          navigate("/app/report");
-        }, 800);
+        const res = await archivesApi.upload(fd, { sync: true });
+        if (!alive) return;
+
+        const ids = res?.doc_ids || [];
+        const statuses = await Promise.all(
+          ids.map((id) => archivesApi.status(id).catch(() => null))
+        );
+        if (!alive) return;
+
+        let totalItems = 0;
+        statuses.forEach((d) => {
+          if (!d) return;
+          const fmt = (d.file_format || "файл").toUpperCase();
+          if (d.parse_status === "error") {
+            pushLog(`Ошибка обработки · ${d.file_name}`);
+          } else {
+            totalItems += d.items_count ?? 0;
+            pushLog(`${fmt} · ${d.file_name} → ${d.items_count ?? 0} позиций`);
+          }
+        });
+        pushLog("Нормализация и сравнение цен · готово");
+        pushLog(`Всего позиций в базе: ${totalItems}`);
+        doneRef.current = true;
+      } catch (e) {
+        if (!alive) return;
+        pushLog("Не удалось обработать файлы — проверьте бэкенд");
+        setTimeout(() => { if (alive) navigate("/app/upload", { replace: true }); }, 1800);
       }
-    }, 90);
+    })();
 
     return () => {
       alive = false;
-      clearInterval(interval);
+      clearInterval(ring);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Кольцо доехало до 100% → уходим в отчёт.
+  useEffect(() => {
+    if (percent >= 99.9 && doneRef.current && !navigatedRef.current) {
+      navigatedRef.current = true;
+      const t = setTimeout(() => {
+        useUploadStore.getState().clear();
+        navigate("/app/report");
+      }, 700);
+      return () => clearTimeout(t);
+    }
+  }, [percent, navigate]);
 
   const stepIdx = percent >= 100 ? 4 : Math.min(3, Math.floor(percent / 25));
   const ringOffset = RING_CIRC - (RING_CIRC * percent) / 100;

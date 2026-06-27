@@ -1,36 +1,16 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import useAuthStore from "../../store/useAuthStore";
 import useUIStore from "../../store/useUIStore";
-import { adminApi } from "../../api";
 import { SCREEN_META } from "./navItems";
 
 // ---------- Верхняя панель ----------
-// Десктоп: заголовок + переключатель роли + колокольчик.
+// Десктоп: заголовок + колокольчик.
 // Мобайл: компактный app-хедер — заголовок слева, колокольчик и аватар справа
 // (аватар открывает профиль-шит). Учитывает safe-area сверху.
 export default function Topbar({ screen }) {
-  const navigate = useNavigate();
-  const { user, role, partnerId, setRole, enterPartner, setSession } = useAuthStore();
+  const { user } = useAuthStore();
   const { openProfile, unreadCount } = useUIStore();
   const [title, subtitle] = SCREEN_META[screen] || SCREEN_META.upload;
-
-  // Смена роли (демо-переключатель). Для партнёра пробуем реальный вход в бэкенд
-  // (демо-аккаунт клиники «Альфа»), при недоступности — локальный фолбэк.
-  const changeRole = async (next) => {
-    if (next === "partner") {
-      try {
-        const res = await adminApi.login({ username: "partner@alfa.kz", password: "partner123" });
-        setSession({ user: { name: res.user?.full_name || "Партнёр", email: "partner@alfa.kz" }, role: "partner", token: res.access_token, partnerId: res.user?.partner_id || null });
-      } catch {
-        // бэкенд недоступен — входим в демо-режим партнёра без мок-данных
-        enterPartner({ partnerId: partnerId || null, name: "Клиника" });
-      }
-      navigate("/app/my-prices");
-      return;
-    }
-    setRole(next);
-    if (role === "partner" || (next === "user" && screen === "admin")) navigate("/app/upload");
-  };
 
   // Колокольчик с бейджем непрочитанных.
   const Bell = ({ className }) => (
@@ -55,22 +35,8 @@ export default function Topbar({ screen }) {
         <p className="text-[13px] text-ink/45 mt-[2px] max-lg:hidden">{subtitle}</p>
       </div>
 
-      {/* Десктоп: роль + колокольчик */}
+      {/* Десктоп: колокольчик */}
       <div className="hidden lg:flex items-center gap-[14px]">
-        <div className="flex items-center gap-[3px] p-[3px] rounded-[11px] bg-white/5 border border-white/[.08]">
-          {[["user", "Пользователь"], ["partner", "Партнёр"], ["admin", "Админ"]].map(([key, label]) => {
-            const on = role === key;
-            return (
-              <button
-                key={key}
-                onClick={() => changeRole(key)}
-                className={`font-semibold text-[12.5px] px-3 py-[6px] rounded-lg transition-all ${on ? "bg-primary/90 text-white" : "bg-transparent text-ink/50"}`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
         <Bell />
       </div>
 

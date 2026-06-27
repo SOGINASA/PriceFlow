@@ -8,12 +8,14 @@ import { create } from "zustand";
 let idSeq = 0;
 
 const useUploadStore = create((set, get) => ({
-  files: [], // [{ id, name, size, type }]
+  files: [], // [{ id, name, size, type, raw }]
 
-  // Результат последней загрузки на бэкенд: { source, documents, doc_ids }.
-  // Используется экраном «Анализ» для показа реального журнала обработки.
-  result: null,
-  setResult: (result) => set({ result }),
+  // Задача на обработку, переданная экрану «Анализ»: { files: File[], partnerName, city }.
+  // UploadPage только складывает её и переходит на /app/analyzing, а саму загрузку
+  // на бэкенд (sync) делает уже экран анализа — чтобы кольцо прогресса крутилось
+  // во время реальной обработки, а не после неё.
+  pending: null,
+  setPending: (pending) => set({ pending }),
 
   // Добавить файлы в очередь (нормализуем к единой структуре).
   addFiles: (incoming) =>
@@ -29,7 +31,7 @@ const useUploadStore = create((set, get) => ({
     set((state) => ({ files: state.files.filter((f) => f.id !== id) })),
 
   // Очистить очередь (например, после успешной обработки).
-  clear: () => set({ files: [], result: null }),
+  clear: () => set({ files: [], pending: null }),
 
   // Признак готовности к запуску обработки.
   hasFiles: () => get().files.length > 0,
