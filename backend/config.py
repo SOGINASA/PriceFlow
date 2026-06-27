@@ -29,6 +29,18 @@ class Config:
     SQLALCHEMY_DATABASE_URI = _db_url or f"sqlite:///{os.path.join(BACKEND_DIR, 'database', 'dev.db')}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # Пул соединений. Для Postgres включаем pre_ping (отсекает «протухшие» после
+    # простоя/рестарта БД соединения — иначе первый запрос после паузы падает с
+    # OperationalError) и recycle. Для SQLite пул не настраиваем: у него своя
+    # логика блокировок (WAL + busy_timeout + BEGIN IMMEDIATE, см. models.py).
+    if (_db_url or '').startswith('postgresql'):
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_pre_ping': True,
+            'pool_recycle': 1800,
+            'pool_size': 10,
+            'max_overflow': 20,
+        }
+
     # === JWT (для операторов / админ-раздела) ===
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-jwt-secret-key-change-in-production')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
@@ -87,6 +99,14 @@ class Config:
     # === Валидация цен ===
     PRICE_ANOMALY_PCT = float(os.environ.get('PRICE_ANOMALY_PCT', 0.50))  # отклонение >50% → аномалия
 
+    # Потолок правдоподобной цены позиции (KZT). Парсер/OCR изредка склеивает
+    # цифры из битой строки в гигантское число (напр. 1e17), которое не влезает
+    # в NUMERIC(14,2) и роняет вставку ВСЕГО документа на Postgres (на SQLite
+    # такие числа молча проходили). Значение выше потолка считаем ошибкой
+    # распознавания: цену обнуляем, позиция уходит в ревью. 1e9 ₸ с запасом
+    # покрывает любые реальные медуслуги и не доходит до лимита колонки (1e12).
+    MAX_PLAUSIBLE_PRICE = float(os.environ.get('MAX_PLAUSIBLE_PRICE', 1_000_000_000))
+
     # === Конвертация валют (ТЗ 4.4) ===
     # При True парсер сам тянет курс на дату прайса из API НБ РК, если его нет
     # в таблице exchange_rates. По умолчанию выключено — обработка офлайн и
@@ -112,6 +132,7 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_ENGINE_OPTIONS = {}   # SQLite-память: postgres-пул не применяем (см. Config)
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=5)
     SEMANTIC_MATCH_ENABLED = False   # в тестах не грузим тяжёлую модель эмбеддингов
 

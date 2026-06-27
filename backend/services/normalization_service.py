@@ -158,6 +158,27 @@ def normalize_item(item, index=None):
     """Проставить item.service_id, item.match_score, item.match_method.
     Вернуть True, если автосопоставлено (score >= порога)."""
     svc, score, method = match_service(item.service_name_raw, index)
+    return _apply_match(item, svc, score, method)
+
+
+def normalize_items(items, index=None):
+    """Батч-версия normalize_item для СПИСКА позиций одного документа.
+
+    Семантика считается ОДНИМ энкодом на весь список (см. match_batch), а не
+    model.encode на каждую позицию: для прайса в сотни строк это секунды вместо
+    десятков минут. Порог и проставляемые поля — те же, что в normalize_item.
+    Возвращает число автосопоставленных позиций.
+    """
+    if not items:
+        return 0
+    results = match_batch([it.service_name_raw for it in items], index)
+    return sum(_apply_match(item, svc, score, method)
+               for item, (svc, score, method) in zip(items, results))
+
+
+def _apply_match(item, svc, score, method) -> bool:
+    """Проставить результат сопоставления на позицию по порогу автосопоставления.
+    Вернуть True, если автосопоставлено (общий код normalize_item/normalize_items)."""
     item.match_score = round(score, 4)
     if svc and score >= Config.MATCH_AUTO_THRESHOLD:
         item.service_id = svc.service_id

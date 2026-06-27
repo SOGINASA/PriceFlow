@@ -60,21 +60,30 @@ def process_document(doc_id: str):
         norm.warm_semantic_cache(index)
         db.session.commit()
 
-        auto_matched = 0
+        # 1) валидируем строки и строим позиции В ПАМЯТИ (без записи в БД).
+        #    validate_row имеет побочные эффекты (чистит цену, пишет в лог) и
+        #    отсеивает пустые — поэтому фильтруем им же.
+        built = [_build_item(doc, row) for row in result.rows
+                 if val.validate_row(row, doc.effective_date, log)]
 
-        for row in result.rows:
-            if not val.validate_row(row, doc.effective_date, log):
-                continue
-            item = _build_item(doc, row)
+        # 2) сопоставление со справочником ОДНИМ батчем на весь документ: семантика
+        #    считается одним энкодом, а не model.encode на каждую позицию (секунды
+        #    вместо десятков минут). Позиции ещё transient (не в сессии), поэтому
+        #    commit ниже снимает read-лук прогрева/справочника, не трогая их —
+        #    пишущую транзакцию открываем только на сам цикл вставки.
+        auto_matched = norm.normalize_items(built, index)
+        db.session.commit()
+
+        # 3) запись позиций: версионирование/аномалии. Порядок строк сохраняем —
+        #    внутри-документные дубли супер-седят друг друга в исходном порядке.
+        for item in built:
             val.flag_resident_order(item, log)   # нерезидент < резидент → флаг ревью
             _supersede_previous(item, log)
             db.session.add(item)
             db.session.flush()
-            if norm.normalize_item(item, index):
-                auto_matched += 1
 
         # статус: needs_review, если что-то не нормализовалось/есть предупреждения
-        total = len([r for r in result.rows])
+        total = len(result.rows)
         doc.parse_status = (
             ParseStatus.NEEDS_REVIEW if (auto_matched < total or log) else ParseStatus.DONE
         )

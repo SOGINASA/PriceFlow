@@ -93,3 +93,18 @@ def test_flag_resident_order_anomaly():
     assert val.flag_resident_order(bad, []) is True and bad.has_anomaly is True
     ok = PriceItem(service_name_raw='Y', price_resident_kzt=5000, price_nonresident_kzt=8000)
     assert val.flag_resident_order(ok, []) is False
+
+
+def test_validate_row_caps_implausible_price():
+    """Гигантская цена (склейка цифр при распознавании) обнуляется, но строка
+    остаётся: иначе 1e17 не влезает в NUMERIC(14,2) и роняет весь документ."""
+    from services import validation_service as val
+    from services.extractors import RawRow
+    log = []
+    row = RawRow(service_name_raw='Гардасил', price_resident=1.05e17, price_nonresident=2e17)
+    assert val.validate_row(row, None, log) is True       # название есть → строку держим
+    assert row.price_resident is None and row.price_nonresident is None
+    assert any('Неправдоподобн' in m for m in log)
+    # нормальная цена не затрагивается
+    ok = RawRow(service_name_raw='ОАК', price_resident=3500.0)
+    assert val.validate_row(ok, None, []) is True and ok.price_resident == 3500.0

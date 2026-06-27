@@ -27,6 +27,15 @@ def validate_row(row, effective_date: date, log: list) -> bool:
     if row.price_resident is not None and row.price_resident <= 0:
         log.append(f'Некорректная цена резидента ({row.price_resident}) — needs_review: {row.service_name_raw}')
         row.price_resident = None
+    # Потолок правдоподобности: гигантское число — это склейка цифр при
+    # распознавании, а не цена. Обнуляем (иначе не влезает в NUMERIC(14,2) и
+    # роняет вставку всего документа на Postgres), позиция уйдёт в ревью.
+    if row.price_resident is not None and row.price_resident > Config.MAX_PLAUSIBLE_PRICE:
+        log.append(f'Неправдоподобная цена резидента ({row.price_resident}) — отброшена: {row.service_name_raw}')
+        row.price_resident = None
+    if row.price_nonresident is not None and row.price_nonresident > Config.MAX_PLAUSIBLE_PRICE:
+        log.append(f'Неправдоподобная цена нерезидента ({row.price_nonresident}) — отброшена: {row.service_name_raw}')
+        row.price_nonresident = None
     # Нерезидент >= резидент
     if (row.price_resident is not None and row.price_nonresident is not None
             and row.price_nonresident < row.price_resident):
