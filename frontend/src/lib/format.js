@@ -36,7 +36,8 @@ export function fileTypeOf(name) {
   if (n.endsWith(".pdf")) return "pdf";
   if (n.endsWith(".csv")) return "csv";
   if (/\.(xlsx|xls)$/.test(n)) return "xls";
-  if (/\.(png|jpg|jpeg)$/.test(n)) return "img";
+  if (/\.(png|jpg|jpeg|tif|tiff|bmp)$/.test(n)) return "img";
   if (/\.(docx|rtf)$/.test(n)) return "doc";
+  if (n.endsWith(".zip")) return "zip";
   return "file";
 }

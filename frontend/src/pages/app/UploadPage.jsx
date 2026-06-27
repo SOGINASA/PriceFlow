@@ -59,13 +59,13 @@ export default function UploadPage() {
         </div>
         <div className="font-display font-semibold text-xl">Перетащите прайсы сюда</div>
         <div className="mt-2 text-[14.5px] text-ink/50">
-          или <span className="text-lav font-semibold">выберите файлы</span> — PDF, Excel, CSV, фото и сканы
+          или <span className="text-lav font-semibold">выберите файлы</span> — PDF, Excel, CSV, DOCX, фото, сканы и <span className="text-lav font-semibold">ZIP-архивы</span>
         </div>
         <input
           ref={inputRef}
           type="file"
           multiple
-          accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.docx"
+          accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.docx,.zip"
           className="hidden"
           onChange={(e) => { addFiles(mapFiles(e.target.files)); e.target.value = ""; }}
         />

@@ -44,15 +44,42 @@ export default function AnalyzingPage() {
 
     (async () => {
       try {
-        const fd = new FormData();
-        pending.files.forEach((f) => fd.append("files", f, f.name));
-        if (pending.partnerName) fd.append("partner_name", pending.partnerName);
-        if (pending.city) fd.append("city", pending.city);
+        // Бэкенд распаковывает ZIP только если он пришёл в поле "file"; обычные
+        // прайсы — в поле "files". Поэтому каждый .zip шлём отдельным запросом
+        // (поле file), а все не-zip файлы — одним запросом (поле files).
+        const isZip = (f) => f.name.toLowerCase().endsWith(".zip");
+        const zips = pending.files.filter(isZip);
+        const loose = pending.files.filter((f) => !isZip(f));
 
-        const res = await archivesApi.upload(fd, { sync: true });
+        const withMeta = (fd) => {
+          if (pending.partnerName) fd.append("partner_name", pending.partnerName);
+          if (pending.city) fd.append("city", pending.city);
+          return fd;
+        };
+
+        const requests = [];
+        zips.forEach((zip) => {
+          const fd = new FormData();
+          fd.append("file", zip, zip.name);
+          requests.push(archivesApi.upload(withMeta(fd), { sync: true }));
+        });
+        if (loose.length) {
+          const fd = new FormData();
+          loose.forEach((f) => fd.append("files", f, f.name));
+          requests.push(archivesApi.upload(withMeta(fd), { sync: true }));
+        }
+        if (zips.length) pushLog(`Распаковка ZIP-архивов: ${zips.length}`);
+
+        // allSettled — один битый архив не должен ронять обработку остальных.
+        const settled = await Promise.allSettled(requests);
         if (!alive) return;
+        const ids = [];
+        let anyOk = false;
+        settled.forEach((s) => {
+          if (s.status === "fulfilled") { anyOk = true; ids.push(...(s.value?.doc_ids || [])); }
+        });
+        if (!anyOk) throw new Error("upload failed");
 
-        const ids = res?.doc_ids || [];
         const statuses = await Promise.all(
           ids.map((id) => archivesApi.status(id).catch(() => null))
         );
