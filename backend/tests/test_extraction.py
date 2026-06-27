@@ -49,10 +49,26 @@ def test_detect_price_excludes_index_column():
     assert cols == [2]                         # col0 (№) отсеян по медиане < 100
 
 
-def test_merge_thousands_and_drop_index():
-    # «9»+«900» → «9900»; две отдельные цены не слипаются
-    assert pdf_text._merge_thousands(['9', '900', '15', '000']) == ['9900', '15000']
-    assert pdf_text._merge_thousands(['1', '234', '567']) == ['1234567']
+def test_cells_by_x_gap_splits_columns():
+    """Соседние ценовые колонки '105 000 105 000 210 000' разделяются по
+    горизонтальному зазору в три цены, а не склеиваются в одно число 10^17.
+    Координаты взяты из реального прайса (страница 2, строка «Гардасил»)."""
+    def w(x0, x1, text):
+        return {'x0': x0, 'x1': x1, 'top': 100, 'bottom': 110, 'text': text}
+    row = [w(80, 92, '66'), w(95, 123, 'Гардасил'),
+           w(408, 417, '105'), w(419, 429, '000'),     # колонка 1: 105 000
+           w(461, 470, '105'), w(472, 482, '000'),     # колонка 2: 105 000
+           w(512, 521, '210'), w(524, 534, '000')]     # колонка 3: 210 000
+    cells = pdf_text._cells_by_x_gap(row, gap=6.0)       # gap ≈ 0.6 * высоты строки
+    # узкий зазор тысяч склеен, широкий зазор колонок — разделён
+    assert '105 000' in cells and '210 000' in cells
+    from services.extractors.row_parser import to_number
+    nums = [to_number(c) for c in cells if to_number(c)]
+    assert 105000 in nums and 210000 in nums
+    assert all(n < 1e12 for n in nums)                   # нет числа-монстра
+
+
+def test_drop_index_numbers():
     # номер строки «6» (<100) отбрасывается, реальные цены остаются
     assert pdf_text._drop_index_numbers(['6', 'Приём', '9900', '15000']) == ['Приём', '9900', '15000']
 
