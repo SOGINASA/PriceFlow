@@ -34,6 +34,19 @@ def validate_row(row, effective_date: date, log: list) -> bool:
     return True
 
 
+def flag_resident_order(item: PriceItem, log: list) -> bool:
+    """Цена нерезидента < цены резидента → пометить позицию как аномалию (ТЗ 4.4).
+
+    «Предупреждение, флаг для ревью»: ставим has_anomaly, чтобы позиция попала в
+    очередь /needs-review, а не только в лог документа."""
+    res, nonres = item.price_resident_kzt, item.price_nonresident_kzt
+    if res is not None and nonres is not None and float(nonres) < float(res):
+        item.has_anomaly = True
+        log.append(f'Цена нерезидента < резидента — флаг ревью: {item.service_name_raw}')
+        return True
+    return False
+
+
 def check_price_anomaly(item: PriceItem, previous: PriceItem, log: list) -> bool:
     """Отклонение цены от предыдущей версии > порога → аномалия (ТЗ 4.4)."""
     if not previous or previous.price_resident_kzt in (None, 0) or item.price_resident_kzt is None:

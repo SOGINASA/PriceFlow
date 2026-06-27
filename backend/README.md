@@ -103,8 +103,35 @@ curl -X POST localhost:5252/api/rates/refresh -H 'Content-Type: application/json
 curl 'localhost:5252/api/rates/convert?amount=120&currency=USD&date=2025-03-01'
 ```
 
+## Приём прайсов через CLI (ТЗ 4.1)
+
+Помимо веб-интерфейса архив можно принять командой (синхронная обработка, Redis не нужен):
+
+```bash
+flask --app app ingest path/to/archive.zip            # ZIP-архив
+flask --app app ingest path/to/folder --city Алматы    # папка с прайсами
+flask --app app ingest price.xlsx --partner "Клиника «Альфа»"
+flask --app app ingest archive.zip --async             # в очередь Celery (нужен worker)
+```
+
+## Поддерживаемые форматы (ТЗ 4.2)
+
+PDF (текст и скан), DOCX (c tracked changes), XLSX/XLS, CSV, изображения-сканы
+(PNG/JPG/JPEG/TIFF/BMP — идут через OCR). Старый бинарный `.doc` не поддерживается
+(`python-docx` читает только OOXML) — система выдаёт понятное сообщение «пересохраните
+как .docx», а не падает с невнятной ошибкой.
+
+## Замечания по соответствию ТЗ
+
+- **PostgreSQL** — целевая БД (см. `docker-compose.yml`). Для офлайн-старта без
+  Docker используется SQLite-fallback; задайте `DATABASE_URL=postgresql://...`,
+  чтобы включить Postgres (рекомендуется для сдачи и FTS).
+- **OCR** — EasyOCR (готовая нейросеть) вместо Tesseract: не требует системных
+  бинарей (Tesseract/poppler), кроссплатформенно, страницы PDF рендерятся через
+  PyMuPDF. ТЗ §6 — лишь рекомендации, EasyOCR это допустимый аналог.
+
 ## TODO (следующие шаги)
 
-- OpenAPI/Swagger (flask-smorest) — обязательно по ТЗ.
-- PostgreSQL FTS вместо ILIKE в `routes/search.py`.
-- Семантический матчинг (эмбеддинги) для повышения % автонормализации.
+- PostgreSQL FTS (`to_tsvector`/`plainto_tsquery`) вместо построчного поиска в
+  `routes/search.py` — на больших объёмах справочника.
+- Кэш индекса нормализации в Redis вместо чтения из БД на каждый батч.

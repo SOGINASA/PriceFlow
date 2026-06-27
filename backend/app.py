@@ -99,6 +99,53 @@ def create_app(config_object=None):
     def health():
         return jsonify({'service': 'MedArchive API', 'status': 'ok'})
 
+    _register_cli(app)
+    return app
+
+
+def _register_cli(app):
+    """CLI-команды (ТЗ 4.1 — приём архива через CLI помимо интерфейса).
+
+    Использование:
+        flask --app app ingest <путь к .zip | папке | файлу> [--partner NAME] [--city CITY]
+        flask --app app ingest archive.zip --async   # поставить в очередь Celery
+    """
+    import click
+
+    @app.cli.command('ingest')
+    @click.argument('path')
+    @click.option('--partner', default=None, help='Явное название клиники на все файлы')
+    @click.option('--city', default=None, help='Город клиники')
+    @click.option('--async', 'async_', is_flag=True, default=False,
+                  help='Поставить в очередь Celery вместо синхронной обработки')
+    def ingest(path, partner, city, async_):
+        """Принять прайсы из ZIP-архива, папки или одиночного файла и обработать."""
+        from services.archive_service import ingest_path
+        from services.tasks import process_document_sync
+
+        doc_ids = ingest_path(path, enqueue=async_, partner_name=partner, city=city)
+        click.echo(f'Принято документов: {len(doc_ids)}')
+        if async_:
+            click.echo('Документы поставлены в очередь Celery (нужен worker + Redis).')
+            return
+
+        for doc_id in doc_ids:
+            process_document_sync(doc_id)
+        if Config.AUTO_BUILD_CATALOG:
+            try:
+                from services import catalog_service
+                catalog_service.build_catalog_from_items(
+                    threshold=Config.CATALOG_CLUSTER_THRESHOLD, only_unmatched=True)
+            except Exception as e:  # noqa: BLE001
+                click.echo(f'[catalog] пропущено: {e}')
+
+        from models import PriceDocument
+        for doc_id in doc_ids:
+            doc = db.session.get(PriceDocument, doc_id)
+            if doc:
+                click.echo(f'  {doc.file_name}: {doc.parse_status}, позиций {doc.items.count()}')
+        click.echo('Готово.')
+
     return app
 
 

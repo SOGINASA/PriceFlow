@@ -8,6 +8,7 @@
 """
 import os
 import re
+import shutil
 import zipfile
 import logging
 from datetime import datetime
@@ -18,7 +19,11 @@ from services.extractors import detect_format
 
 logger = logging.getLogger(__name__)
 
-_SUPPORTED = ('.pdf', '.docx', '.doc', '.xlsx', '.xls')
+# Форматы, которые система принимает к обработке (ТЗ 4.2 + фото/сканы и CSV).
+# .doc (старый бинарный Word) принимаем, но честно сообщаем, что нужен .docx
+# (см. extractors/docx.py) — иначе из ZIP он молча терялся бы.
+_SUPPORTED = ('.pdf', '.docx', '.doc', '.xlsx', '.xls', '.csv',
+              '.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp')
 _DATE_RE = re.compile(r'(20\d{2})[-_.]?(\d{2})[-_.]?(\d{2})')
 
 
@@ -124,6 +129,40 @@ def ingest_archive(zip_path: str, enqueue=True, partner_name=None, city=None):
             with zf.open(member) as src, open(target, 'wb') as dst:
                 dst.write(src.read())
             doc_ids.append(_create_document(target, safe_name, partner_name, city))
+
+    db.session.commit()
+    if enqueue:
+        _enqueue(doc_ids)
+    return doc_ids
+
+
+def ingest_path(path: str, enqueue=True, partner_name=None, city=None):
+    """Приём прайсов с диска (для CLI, ТЗ 4.1): ZIP-архив, папка или одиночный файл.
+
+    Возвращает список doc_id. Для папки берёт все поддерживаемые файлы внутри.
+    """
+    if os.path.isdir(path):
+        files = [os.path.join(path, n) for n in sorted(os.listdir(path))]
+        return _ingest_local_files(files, enqueue, partner_name, city)
+    if path.lower().endswith('.zip'):
+        return ingest_archive(path, enqueue=enqueue, partner_name=partner_name, city=city)
+    return _ingest_local_files([path], enqueue, partner_name, city)
+
+
+def _ingest_local_files(paths, enqueue=True, partner_name=None, city=None):
+    """Скопировать файлы с диска в хранилище и создать документы (общий код для CLI)."""
+    batch = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    out_dir = os.path.join(Config.EXTRACTED_DIR, batch)
+    os.makedirs(out_dir, exist_ok=True)
+
+    doc_ids = []
+    for src in paths:
+        name = os.path.basename(src)
+        if not os.path.isfile(src) or not name.lower().endswith(_SUPPORTED):
+            continue
+        target = os.path.join(out_dir, name)
+        shutil.copy2(src, target)
+        doc_ids.append(_create_document(target, name, partner_name, city))
 
     db.session.commit()
     if enqueue:

@@ -34,6 +34,22 @@ def _set_sqlite_pragmas(dbapi_connection, _connection_record):
         cur.execute('PRAGMA busy_timeout=30000')   # ждать лок до 30с
         cur.execute('PRAGMA synchronous=NORMAL')    # безопасно для WAL, быстрее
         cur.close()
+        # Отдать управление транзакциями SQLAlchemy, чтобы ниже самим открывать
+        # их через BEGIN IMMEDIATE. Иначе pysqlite стартует транзакцию лениво и
+        # в DEFERRED: первый SELECT берёт read-снапшот, а при апгрейде до записи
+        # параллельный коммит даёт SQLITE_BUSY_SNAPSHOT — этот случай
+        # busy_timeout НЕ ждёт, и прилетает "database is locked".
+        dbapi_connection.isolation_level = None
+
+
+# Каждую транзакцию на SQLite открываем сразу как пишущую (BEGIN IMMEDIATE):
+# писатели тогда честно сериализуются через busy_timeout, а не падают на
+# busy-снапшоте при конкурентной записи (напр. несколько POST /api/me/items
+# подряд из кабинета партнёра). На Postgres ветка не срабатывает.
+@event.listens_for(Engine, 'begin')
+def _sqlite_begin_immediate(conn):
+    if conn.dialect.name == 'sqlite':
+        conn.exec_driver_sql('BEGIN IMMEDIATE')
 
 
 def _uuid():

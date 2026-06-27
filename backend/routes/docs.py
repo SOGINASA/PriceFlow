@@ -37,6 +37,8 @@ OPENAPI = {
         {'name': 'search', 'description': 'Полнотекстовый поиск'},
         {'name': 'review', 'description': 'Очереди верификации (админ)'},
         {'name': 'dashboard', 'description': 'Метрики обработки'},
+        {'name': 'analytics', 'description': 'Аналитика и сравнение цен'},
+        {'name': 'portal', 'description': 'Кабинет партнёра (роль partner)'},
         {'name': 'rates', 'description': 'Курсы валют для пересчёта цен на дату прайса'},
         {'name': 'admin', 'description': 'Аутентификация админа/партнёра'},
     ],
@@ -50,6 +52,32 @@ OPENAPI = {
                     'multipart/form-data': {'schema': {'type': 'object', 'properties': {'file': {'type': 'string', 'format': 'binary'}}}},
                 }},
                 'responses': _ok(description='Кол-во созданных/обновлённых записей'),
+            }
+        },
+        '/catalog/build': {
+            'post': {
+                'tags': ['catalog'],
+                'summary': 'Сформировать справочник из загруженных прайсов (ТЗ §7)',
+                'requestBody': {'content': {'application/json': {'schema': {'type': 'object', 'properties': {
+                    'threshold': {'type': 'integer', 'description': 'Порог склейки похожих названий (0..100)'},
+                    'only_unmatched': {'type': 'boolean'}}}}}},
+                'responses': _ok(description='Сводка: создано услуг, привязано позиций'),
+            }
+        },
+        '/catalog/export': {
+            'get': {
+                'tags': ['catalog'],
+                'summary': 'Выгрузить текущий справочник (JSON, совместим с /catalog/import)',
+                'responses': _ok('Service', is_array=True),
+            }
+        },
+        '/catalog/consolidate': {
+            'post': {
+                'tags': ['catalog'],
+                'summary': 'Свести дубликаты-синонимы к каноническому названию (опц. LLM)',
+                'requestBody': {'content': {'application/json': {'schema': {'type': 'object', 'properties': {
+                    'use_llm': {'type': 'boolean'}}}}}},
+                'responses': _ok(description='Сводка консолидации'),
             }
         },
         '/archives': {
@@ -163,6 +191,89 @@ OPENAPI = {
         '/dashboard/stats': {
             'get': {'tags': ['dashboard'], 'summary': 'Метрики обработки и % нормализации',
                     'responses': _ok()}
+        },
+        '/analytics/reports': {
+            'get': {'tags': ['analytics'], 'summary': 'Список сводных отчётов (по городам)',
+                    'responses': _ok()}
+        },
+        '/analytics/reports/{report_id}': {
+            'get': {
+                'tags': ['analytics'], 'summary': 'Детальный отчёт: сравнение цен и разброс',
+                'parameters': [{'name': 'report_id', 'in': 'path', 'required': True, 'schema': {'type': 'string'}}],
+                'responses': _ok(),
+            }
+        },
+        '/analytics/services/{service_id}/compare': {
+            'get': {
+                'tags': ['analytics'], 'summary': 'Сравнение цены услуги по клиникам + статистика',
+                'parameters': [{'name': 'service_id', 'in': 'path', 'required': True, 'schema': {'type': 'string'}}],
+                'responses': _ok(),
+            }
+        },
+        '/analytics/services/{service_id}/by-city': {
+            'get': {
+                'tags': ['analytics'], 'summary': 'Срез цен услуги по городам',
+                'parameters': [{'name': 'service_id', 'in': 'path', 'required': True, 'schema': {'type': 'string'}}],
+                'responses': _ok(),
+            }
+        },
+        '/analytics/services/{service_id}/trend': {
+            'get': {
+                'tags': ['analytics'], 'summary': 'Динамика цены услуги во времени',
+                'parameters': [
+                    {'name': 'service_id', 'in': 'path', 'required': True, 'schema': {'type': 'string'}},
+                    {'name': 'partner_id', 'in': 'query', 'schema': {'type': 'string'}},
+                ],
+                'responses': _ok(),
+            }
+        },
+        '/analytics/anomalies': {
+            'get': {
+                'tags': ['analytics'], 'summary': 'Отчёт по аномалиям цен',
+                'parameters': [{'name': 'limit', 'in': 'query', 'schema': {'type': 'integer'}}],
+                'responses': _ok(),
+            }
+        },
+        '/me': {
+            'get': {'tags': ['portal'], 'summary': 'Текущий пользователь + его клиника (JWT)',
+                    'responses': _ok()}
+        },
+        '/me/clinic': {
+            'patch': {
+                'tags': ['portal'], 'summary': 'Обновить профиль своей клиники',
+                'requestBody': {'content': {'application/json': {'schema': {'$ref': '#/components/schemas/Partner'}}}},
+                'responses': _ok('Partner'),
+            }
+        },
+        '/me/items': {
+            'get': {'tags': ['portal'], 'summary': 'Прайс своей клиники (с историей цен)',
+                    'responses': _ok('PriceItem', is_array=True)},
+            'post': {
+                'tags': ['portal'], 'summary': 'Добавить услугу/препарат в свой прайс',
+                'requestBody': {'content': {'application/json': {'schema': {'type': 'object', 'properties': {
+                    'name': {'type': 'string'}, 'resident': {'type': 'number'},
+                    'nonresident': {'type': 'number'}, 'effective_date': {'type': 'string', 'format': 'date'}}}}}},
+                'responses': _ok('PriceItem'),
+            },
+        },
+        '/me/items/{item_id}': {
+            'patch': {
+                'tags': ['portal'], 'summary': 'Изменить цену/название (старая цена → в историю)',
+                'parameters': [{'name': 'item_id', 'in': 'path', 'required': True, 'schema': {'type': 'string'}}],
+                'responses': _ok('PriceItem'),
+            },
+            'delete': {
+                'tags': ['portal'], 'summary': 'Убрать позицию (деактивировать)',
+                'parameters': [{'name': 'item_id', 'in': 'path', 'required': True, 'schema': {'type': 'string'}}],
+                'responses': _ok(),
+            },
+        },
+        '/price-items/{item_id}/history': {
+            'get': {
+                'tags': ['portal'], 'summary': 'История цен позиции (публично, видна всем)',
+                'parameters': [{'name': 'item_id', 'in': 'path', 'required': True, 'schema': {'type': 'string'}}],
+                'responses': _ok(),
+            }
         },
         '/rates': {
             'get': {

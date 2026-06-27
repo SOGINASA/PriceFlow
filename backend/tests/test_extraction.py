@@ -3,7 +3,8 @@
 Чистые функции — без БД/приложения.
 """
 from services.extractors import row_parser as rp
-from services.extractors import pdf_text
+from services.extractors import pdf_text, detect_format
+from models import FileFormat
 
 
 def test_classify_multirow_header_below_preamble():
@@ -61,3 +62,34 @@ def test_currency_detection_no_false_positive():
     assert rp.detect_currency(['$120']) == 'USD'
     assert rp.detect_currency(['5 200 ₽']) == 'RUB'
     assert rp.detect_currency(['услуги ближнего зарубежья']) == 'KZT'   # «зарубежья» ≠ RUB
+
+
+def test_detect_format_images_and_csv():
+    """Фото/сканы → scan_pdf (OCR), CSV → как таблица (xlsx-экстрактор)."""
+    assert detect_format('photo.jpg') == FileFormat.SCAN_PDF
+    assert detect_format('scan.PNG') == FileFormat.SCAN_PDF
+    assert detect_format('scan.tiff') == FileFormat.SCAN_PDF
+    assert detect_format('price.csv') == FileFormat.XLSX
+    assert detect_format('price.xlsx') == FileFormat.XLSX
+    assert detect_format('doc.docx') == FileFormat.DOCX
+
+
+def test_guess_date_from_text():
+    """Дата прайса из шапки документа (ТЗ 2.1/4.4): ДД.ММ.ГГГГ, ГГГГ-ММ-ДД, рус. месяц."""
+    from datetime import date
+    from services import pipeline_service as ps
+    assert ps._guess_date_from_text('Прейскурант от 01.03.2025 на услуги') == date(2025, 3, 1)
+    assert ps._guess_date_from_text('price list 2024-06-15') == date(2024, 6, 15)
+    assert ps._guess_date_from_text('действует с 5 марта 2025 года') == date(2025, 3, 5)
+    assert ps._guess_date_from_text('дата 01.01.2099') is None        # будущее отбрасываем
+    assert ps._guess_date_from_text('Услуга 12500 18000') is None     # цены — не дата
+
+
+def test_flag_resident_order_anomaly():
+    """Нерезидент < резидента → флаг аномалии для очереди ревью (ТЗ 4.4)."""
+    from services import validation_service as val
+    from models import PriceItem
+    bad = PriceItem(service_name_raw='X', price_resident_kzt=5000, price_nonresident_kzt=3000)
+    assert val.flag_resident_order(bad, []) is True and bad.has_anomaly is True
+    ok = PriceItem(service_name_raw='Y', price_resident_kzt=5000, price_nonresident_kzt=8000)
+    assert val.flag_resident_order(ok, []) is False

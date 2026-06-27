@@ -65,7 +65,7 @@ export default function UploadPage() {
           ref={inputRef}
           type="file"
           multiple
-          accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.docx"
+          accept=".pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.docx"
           className="hidden"
           onChange={(e) => { addFiles(mapFiles(e.target.files)); e.target.value = ""; }}
         />

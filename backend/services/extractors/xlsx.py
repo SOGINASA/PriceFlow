@@ -48,10 +48,30 @@ def extract(file_path: str) -> ExtractResult:
 
 
 def _load_sheets(file_path: str):
-    """Вернуть [(title, rows)] для книги. .xls читаем через xlrd, остальное — openpyxl."""
-    if file_path.lower().endswith('.xls'):
+    """Вернуть [(title, rows)] для книги. .csv → csv-модуль, .xls → xlrd, остальное → openpyxl."""
+    low = file_path.lower()
+    if low.endswith('.csv'):
+        return _load_csv(file_path)
+    if low.endswith('.xls'):
         return _load_xls(file_path)
     return _load_xlsx(file_path)
+
+
+def _load_csv(file_path: str):
+    """CSV как один лист. Угадываем кодировку (utf-8/cp1251) и разделитель (,/;/таб)."""
+    import csv
+    for encoding in ('utf-8-sig', 'cp1251', 'latin-1'):
+        try:
+            with open(file_path, newline='', encoding=encoding) as f:
+                sample = f.read(8192)
+                f.seek(0)
+                delimiter = ';' if sample.count(';') > sample.count(',') else \
+                    ('\t' if sample.count('\t') > sample.count(',') else ',')
+                rows = [list(r) for r in csv.reader(f, delimiter=delimiter)]
+            return [('CSV', rows)]
+        except UnicodeDecodeError:
+            continue
+    return [('CSV', [])]
 
 
 def _load_xlsx(file_path: str):
