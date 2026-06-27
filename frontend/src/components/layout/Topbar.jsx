@@ -12,6 +12,34 @@ export default function Topbar({ screen }) {
   const { openProfile, unreadCount } = useUIStore();
   const [title, subtitle] = SCREEN_META[screen] || SCREEN_META.upload;
 
+  // Смена роли (демо-переключатель). Для партнёра и админа выполняем реальный
+  // вход в бэкенд (демо-аккаунты) — чтобы получить JWT для защищённых разделов
+  // (верификация требует токен). При недоступности бэкенда — локальный фолбэк.
+  const changeRole = async (next) => {
+    if (next === "partner") {
+      try {
+        const res = await adminApi.login({ username: "partner@alfa.kz", password: "partner123" });
+        setSession({ user: { name: res.user?.full_name || "Партнёр", email: "partner@alfa.kz" }, role: "partner", token: res.access_token, partnerId: res.user?.partner_id || null });
+      } catch {
+        enterPartner({ partnerId: partnerId || null, name: "Клиника" });
+      }
+      navigate("/app/my-prices");
+      return;
+    }
+    if (next === "admin") {
+      try {
+        const res = await adminApi.login({ username: "admin@medarchive.kz", password: "admin123" });
+        setSession({ user: { name: res.user?.full_name || "Администратор", email: "admin@medarchive.kz" }, role: "admin", token: res.access_token, partnerId: null });
+      } catch {
+        setRole("admin");
+      }
+      navigate("/app/admin");
+      return;
+    }
+    setRole(next);
+    if (role === "partner" || role === "admin") navigate("/app/upload");
+  };
+
   // Колокольчик с бейджем непрочитанных.
   const Bell = ({ className }) => (
     <Link to="/app/notifications" className={`relative grid place-items-center w-10 h-10 rounded-[11px] bg-white/5 border border-white/10 text-ink/70 transition-colors hover:bg-white/[0.09] ${className || ""}`}>

@@ -25,8 +25,12 @@ def stats():
     anomalies = PriceItem.query.filter(
         PriceItem.is_active.is_(True), PriceItem.has_anomaly.is_(True)
     ).count()
+    items_verified = PriceItem.query.filter(
+        PriceItem.is_active.is_(True), PriceItem.is_verified.is_(True)
+    ).count()
 
     normalization_rate = round(items_matched / items_total * 100, 1) if items_total else 0.0
+    verification_rate = round(items_verified / items_total * 100, 1) if items_total else 0.0
 
     # Дообучение (ТЗ 4.3): сколько синонимов выучено на правках оператора и как
     # распределены автосопоставления по методу (exact/fuzzy/semantic).
@@ -62,7 +66,9 @@ def stats():
             'matched': items_matched,
             'unmatched': unmatched,
             'anomalies': anomalies,
+            'verified': items_verified,
             'normalization_rate_pct': normalization_rate,  # цель MVP ≥ 70%
+            'verification_rate_pct': verification_rate,     # доля проверенных оператором
         },
         'partners': Partner.query.count(),
         'services': Service.query.filter_by(is_active=True).count(),
