@@ -158,8 +158,14 @@ def invalidate_semantic_cache():
 
 
 def _catalog_embeddings(model):
-    """Матрица нормализованных эмбеддингов канонических названий активных услуг
-    (кэшируется; перестраивается при изменении числа услуг)."""
+    """Список service_id активных услуг + матрица нормализованных эмбеддингов их
+    канонических названий (кэшируется; перестраивается при изменении числа услуг).
+
+    ВАЖНО: кэшируем только идентификаторы, НЕ ORM-объекты Service. Объекты привязаны
+    к сессии БД, в которой были загружены; на следующем запросе сессия другая и
+    закэшированный объект становится detached → DetachedInstanceError при чтении
+    любого его атрибута. Поэтому возвращаем id, а услугу подгружаем в текущей сессии.
+    """
     global _sem_cache
     import numpy as np
     services = Service.query.filter_by(is_active=True).all()
@@ -171,8 +177,9 @@ def _catalog_embeddings(model):
         return [], None
     emb = model.encode([s.service_name for s in services],
                        convert_to_numpy=True, normalize_embeddings=True)
-    _sem_cache = (signature, services, np.asarray(emb, dtype='float32'))
-    return services, _sem_cache[2]
+    ids = [s.service_id for s in services]
+    _sem_cache = (signature, ids, np.asarray(emb, dtype='float32'))
+    return ids, _sem_cache[2]
 
 
 def _semantic_match(raw_name: str) -> Tuple[Optional[Service], float]:
@@ -182,13 +189,17 @@ def _semantic_match(raw_name: str) -> Tuple[Optional[Service], float]:
         return None, 0.0
     try:
         import numpy as np
-        services, mat = _catalog_embeddings(model)
-        if mat is None or not services:
+        ids, mat = _catalog_embeddings(model)
+        if mat is None or not ids:
             return None, 0.0
         q = model.encode([raw_name], convert_to_numpy=True, normalize_embeddings=True)[0]
         sims = mat @ np.asarray(q, dtype='float32')   # косинус (всё нормализовано)
         i = int(sims.argmax())
-        return services[i], float(sims[i])
+        # услугу берём в ТЕКУЩЕЙ сессии по id (кэш хранит только id — см. выше)
+        svc = db.session.get(Service, ids[i])
+        if svc is None:
+            return None, 0.0
+        return svc, float(sims[i])
     except Exception as e:  # noqa: BLE001
         logger.warning('semantic match failed: %s', e)
         return None, 0.0
