@@ -15,33 +15,6 @@ export default function ProfileSheet() {
     navigate(path);
   };
 
-  // Переключение роли (демо). Партнёр → реальный вход в бэкенд, иначе фолбэк.
-  const changeRole = async (next) => {
-    if (next === "partner") {
-      try {
-        const res = await adminApi.login({ username: "partner@alfa.kz", password: "partner123" });
-        setSession({ user: { name: res.user?.full_name || "Партнёр", email: "partner@alfa.kz" }, role: "partner", token: res.access_token, partnerId: res.user?.partner_id || null });
-      } catch {
-        // бэкенд недоступен — входим в демо-режим партнёра без мок-данных
-        enterPartner({ partnerId: partnerId || null, name: "Клиника" });
-      }
-      go("/app/my-prices");
-      return;
-    }
-    if (next === "admin") {
-      try {
-        const res = await adminApi.login({ username: "admin@medarchive.kz", password: "admin123" });
-        setSession({ user: { name: res.user?.full_name || "Администратор", email: "admin@medarchive.kz" }, role: "admin", token: res.access_token, partnerId: null });
-      } catch {
-        setRole("admin");
-      }
-      go("/app/admin");
-      return;
-    }
-    setRole(next);
-    if (role === "partner" || role === "admin") go("/app/upload");
-  };
-
   const handleLogout = () => {
     closeProfile();
     logout();
