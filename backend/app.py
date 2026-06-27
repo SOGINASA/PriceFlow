@@ -16,6 +16,24 @@ migrate = Migrate()
 jwt = JWTManager()
 
 
+def _recover_orphaned_processing():
+    """Док в статусе processing после рестарта процесса — заведомо осиротевший:
+    обработка не переживает перезапуск (краш/убитый воркер/«database is locked»).
+    Без этого он навсегда висит в processing — невидим в очередях и никогда не
+    переобрабатывается. Помечаем как error с пометкой, чтобы всплыл в списке и
+    чинился через `python recover_stuck.py`."""
+    from models import PriceDocument, ParseStatus
+    stuck = PriceDocument.query.filter_by(parse_status=ParseStatus.PROCESSING).all()
+    if not stuck:
+        return
+    for doc in stuck:
+        doc.parse_status = ParseStatus.ERROR
+        doc.parse_log = ((doc.parse_log + '\n') if doc.parse_log else '') + \
+            'Обработка прервана (рестарт процесса) — переобработайте: recover_stuck.py'
+    db.session.commit()
+    print(f"[recover] осиротевших processing помечено error: {len(stuck)}")
+
+
 def _ensure_columns():
     """Лёгкая авто-миграция: добавляет новые колонки в уже существующие таблицы
     (users.partner_id, partners.description), чтобы не требовать пересоздания БД.
@@ -67,6 +85,7 @@ def create_app(config_object=None):
                 seed_all()
             except Exception as e:  # noqa: BLE001 — сид не должен ронять старт
                 print(f"[seed] skipped: {e}")
+            _recover_orphaned_processing()
 
         # Закрыть ВСЕ стартовые соединения пула. На SQLite каждая транзакция
         # открывается как BEGIN IMMEDIATE (write-lock). Если idle-соединение из

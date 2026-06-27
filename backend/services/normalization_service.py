@@ -78,6 +78,82 @@ def match_service(raw_name: str, index=None) -> Tuple[Optional[Service], float, 
     return best_svc, best_score, (FUZZY if best_svc is not None else None)
 
 
+def match_batch(raw_names, index=None):
+    """Векторная версия match_service для СПИСКА названий (очередь /unmatched).
+
+    Та же логика тиров (exact → fuzzy → semantic), но семантика считается ОДНИМ
+    батч-энкодом на весь список, а не по вызову на позицию. Для 500 позиций это
+    ~5с вместо ~20 минут (500 отдельных model.encode по ~2.5с каждый).
+
+    Возвращает list[(Service|None, score, method)] в порядке raw_names.
+    """
+    if index is None:
+        index = _build_index()
+    names = list(raw_names)
+    n = len(names)
+
+    # Семантика: один энкод на весь список + матрица справочника (если включено).
+    sem_ids = sem_mat = q_emb = None
+    model = _get_model()
+    if model is not None and n:
+        try:
+            import numpy as np
+            sem_ids, sem_mat = _catalog_embeddings(model)
+            if sem_mat is not None and sem_ids:
+                q_emb = model.encode(names, convert_to_numpy=True,
+                                     normalize_embeddings=True, batch_size=64)
+        except Exception as e:  # noqa: BLE001 — семантика не критична, останется fuzzy
+            logger.warning('batch semantic skipped: %s', e)
+            sem_ids = sem_mat = q_emb = None
+
+    # id услуги -> Service (один запрос вместо 500 db.session.get в цикле).
+    id2svc = {}
+    if sem_ids:
+        for svc in Service.query.filter(Service.service_id.in_(sem_ids)).all():
+            id2svc[svc.service_id] = svc
+
+    try:
+        from rapidfuzz import process, fuzz
+        _has_fuzz = True
+    except ImportError:
+        _has_fuzz = False
+        logger.warning('rapidfuzz не установлен — нечёткий матчинг отключён')
+
+    out = []
+    for i, raw in enumerate(names):
+        key = _normalize(raw)
+        if not key:
+            out.append((None, 0.0, None))
+            continue
+        # 1) точное совпадение
+        if key in index:
+            out.append((index[key], 1.0, EXACT))
+            continue
+        # 2) нечёткий
+        best_svc, best_score = None, 0.0
+        if _has_fuzz:
+            choice = process.extractOne(key, index.keys(), scorer=fuzz.token_sort_ratio)
+            if choice:
+                name, score, _ = choice
+                best_svc, best_score = index[name], score / 100.0
+        if best_svc is not None and best_score >= Config.MATCH_AUTO_THRESHOLD:
+            out.append((best_svc, best_score, FUZZY))
+            continue
+        # 3) семантика (из заранее посчитанного батча)
+        if q_emb is not None:
+            sims = sem_mat @ q_emb[i]
+            j = int(sims.argmax())
+            sem_score = float(sims[j])
+            if sem_score >= max(best_score, Config.SEMANTIC_THRESHOLD):
+                svc = id2svc.get(sem_ids[j])
+                if svc is not None:
+                    out.append((svc, sem_score, SEMANTIC))
+                    continue
+        # лучший нечёткий ниже порога — как подсказка оператору
+        out.append((best_svc, best_score, FUZZY if best_svc is not None else None))
+    return out
+
+
 def normalize_item(item, index=None):
     """Проставить item.service_id, item.match_score, item.match_method.
     Вернуть True, если автосопоставлено (score >= порога)."""

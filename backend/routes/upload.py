@@ -20,7 +20,10 @@ upload_bp = Blueprint('archives', __name__)
 
 @upload_bp.route('', methods=['POST'])
 def upload_archive():
-    """Принять прайсы: либо ZIP-архив (поле 'file'), либо отдельные файлы (поле 'files').
+    """Принять прайсы: ZIP-архив(ы) в поле 'file' и/или отдельные файлы в поле 'files'.
+
+    Можно слать несколько ZIP и совмещать оба поля в одном запросе. Не-zip,
+    ошибочно присланный в 'file', обрабатывается как обычный прайс.
 
     Query: sync=1 — обработать синхронно (без Celery/Redis, удобно для демо).
     """
@@ -31,23 +34,32 @@ def upload_archive():
     partner_name = (request.form.get('partner_name') or '').strip() or None
     city = (request.form.get('city') or '').strip() or None
 
-    f = request.files.get('file')
-    loose = request.files.getlist('files')
+    file_field = [fs for fs in request.files.getlist('file') if fs and fs.filename]
+    loose = [fs for fs in request.files.getlist('files') if fs and fs.filename]
+    zips = [fs for fs in file_field if fs.filename.lower().endswith('.zip')]
+    loose += [fs for fs in file_field if not fs.filename.lower().endswith('.zip')]
 
-    if f and f.filename.lower().endswith('.zip'):
-        os.makedirs(Config.ARCHIVE_DIR, exist_ok=True)
-        saved = os.path.join(Config.ARCHIVE_DIR,
-                             f"{datetime.utcnow():%Y%m%d_%H%M%S}_{f.filename}")
-        f.save(saved)
-        doc_ids = ingest_archive(saved, enqueue=enqueue,
-                                 partner_name=partner_name, city=city)
-        source = os.path.basename(saved)
-    elif loose:
-        doc_ids = ingest_files(loose, enqueue=enqueue,
-                               partner_name=partner_name, city=city)
-        source = f'{len(loose)} файл(ов)'
-    else:
+    if not zips and not loose:
         return jsonify({'error': "Ожидается ZIP в поле 'file' или файлы в поле 'files'"}), 400
+
+    doc_ids, sources = [], []
+    os.makedirs(Config.ARCHIVE_DIR, exist_ok=True)
+    stamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    for i, zf in enumerate(zips):
+        # префикс i защищает от коллизии имён, если в секунду пришло несколько архивов
+        saved = os.path.join(Config.ARCHIVE_DIR, f"{stamp}_{i}_{zf.filename}")
+        zf.save(saved)
+        doc_ids += ingest_archive(saved, enqueue=enqueue,
+                                  partner_name=partner_name, city=city)
+        sources.append(zf.filename)
+    if loose:
+        doc_ids += ingest_files(loose, enqueue=enqueue,
+                                partner_name=partner_name, city=city)
+        sources.append(f'{len(loose)} файл(ов)')
+
+    if not doc_ids:
+        return jsonify({'source': ', '.join(sources), 'documents': 0, 'doc_ids': [],
+                        'warning': 'В загруженном не найдено поддерживаемых прайсов'}), 201
 
     if not enqueue:  # синхронная обработка для dev/демо
         from services.tasks import process_document_sync
@@ -64,7 +76,7 @@ def upload_archive():
             except Exception as e:  # noqa: BLE001 — не ронять ответ загрузки
                 logger.warning('auto catalog build skipped: %s', e)
 
-    return jsonify({'source': source, 'documents': len(doc_ids), 'doc_ids': doc_ids}), 201
+    return jsonify({'source': ', '.join(sources), 'documents': len(doc_ids), 'doc_ids': doc_ids}), 201
 
 
 @upload_bp.route('', methods=['GET'])

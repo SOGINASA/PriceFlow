@@ -11,7 +11,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import verify_jwt_in_request, get_jwt, get_jwt_identity
 
 from models import db, PriceItem, Service, PriceDocument, Role
-from services.normalization_service import match_service, learn_synonym, MANUAL
+from services.normalization_service import match_batch, learn_synonym, MANUAL
 
 review_bp = Blueprint('review', __name__)
 
