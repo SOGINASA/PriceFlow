@@ -91,8 +91,8 @@ def test_review_endpoints_require_auth(client):
     assert r.status_code == 403
 
 
-def test_match_with_operator_token_and_learns(client):
-    """Оператор с токеном сопоставляет позицию и дообучает синоним."""
+def test_match_with_admin_token_and_learns(client):
+    """Админ с токеном сопоставляет позицию и дообучает синоним."""
     from flask_jwt_extended import create_access_token
     from models import Role
     svc = Service(service_name='Тестовая услуга', synonyms=[])
@@ -103,7 +103,7 @@ def test_match_with_operator_token_and_learns(client):
     db.session.add(it)
     db.session.commit()
 
-    tok = create_access_token(identity='op@test', additional_claims={'role': Role.OPERATOR})
+    tok = create_access_token(identity='admin@test', additional_claims={'role': Role.ADMIN})
     r = client.post('/api/match',
                     json={'item_id': it.item_id, 'service_id': svc.service_id},
                     headers={'Authorization': f'Bearer {tok}'})

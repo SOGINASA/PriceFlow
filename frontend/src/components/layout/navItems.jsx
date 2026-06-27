@@ -13,14 +13,14 @@ export const SCREEN_META = {
 };
 
 // ---------- Пункты навигации рабочей области ----------
-// roles — какие роли видят пункт (user | operator | admin | partner).
+// roles — какие роли видят пункт (user | admin | partner).
 // Используются и в сайдбаре, и в мобильной нижней панели.
 export const NAV_ITEMS = [
   {
     key: "upload",
     to: "/app/upload",
     label: "Загрузка",
-    roles: ["user", "operator", "admin"],
+    roles: ["user", "admin"],
     icon: <path d="M12 16V4m0 0-4 4m4-4 4 4M5 20h14" />,
   },
   {
@@ -41,7 +41,7 @@ export const NAV_ITEMS = [
     key: "report",
     to: "/app/report",
     label: "Отчёты",
-    roles: ["user", "operator", "admin"],
+    roles: ["user", "admin"],
     icon: <><path d="M5 4h14v16H5z" /><path d="M9 9h6M9 13h6M9 17h3" /></>,
   },
   {
@@ -49,7 +49,7 @@ export const NAV_ITEMS = [
     to: "/app/search",
     label: "Поиск клиник",
     shortLabel: "Поиск",
-    roles: ["user", "operator", "admin", "partner"],
+    roles: ["user", "admin", "partner"],
     icon: <><circle cx="11" cy="11" r="7" /><path d="m16.5 16.5 4 4" /></>,
   },
   {
@@ -57,14 +57,14 @@ export const NAV_ITEMS = [
     to: "/app/verification",
     label: "Верификация",
     shortLabel: "Ревью",
-    roles: ["operator", "admin"],
+    roles: ["admin"],
     icon: <><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>,
   },
   {
     key: "notifications",
     to: "/app/notifications",
     label: "Уведомления",
-    roles: ["user", "operator", "admin", "partner"],
+    roles: ["user", "admin", "partner"],
     icon: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></>,
   },
   {
@@ -81,6 +81,6 @@ export function canSee(item, role) {
   if (item.roles) return item.roles.includes(role);
   // обратная совместимость со старыми флагами
   if (item.adminOnly && role !== "admin") return false;
-  if (item.staffOnly && !["admin", "operator"].includes(role)) return false;
+  if (item.staffOnly && role !== "admin") return false;
   return true;
 }

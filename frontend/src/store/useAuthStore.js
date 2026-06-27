@@ -2,16 +2,16 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 // ---------- Стор аутентификации ----------
-// Хранит текущего пользователя, роль (operator | admin) и JWT, полученный
+// Хранит текущего пользователя, роль (admin | partner) и JWT, полученный
 // от реального бэкенда (POST /api/admin/login). Роль управляет доступом к
-// разделам (аналитика — admin, верификация — operator/admin).
+// разделам (аналитика и верификация — admin, кабинет клиники — partner).
 // persist сохраняет сессию между перезагрузками.
 
 const useAuthStore = create(
   persist(
     (set) => ({
       user: null, // { name, email }
-      role: "user", // "user" | "operator" | "admin" | "partner"
+      role: "user", // "user" | "admin" | "partner"
       token: null, // JWT с бэкенда (см. POST /api/admin/login)
       partnerId: null, // id клиники, если вошли как партнёр
       isAuthenticated: false,

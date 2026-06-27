@@ -35,10 +35,10 @@ OPENAPI = {
         {'name': 'services', 'description': 'Услуги справочника'},
         {'name': 'partners', 'description': 'Клиники-партнёры'},
         {'name': 'search', 'description': 'Полнотекстовый поиск'},
-        {'name': 'review', 'description': 'Очереди верификации (операторы)'},
+        {'name': 'review', 'description': 'Очереди верификации (админ)'},
         {'name': 'dashboard', 'description': 'Метрики обработки'},
         {'name': 'rates', 'description': 'Курсы валют для пересчёта цен на дату прайса'},
-        {'name': 'admin', 'description': 'Аутентификация оператора'},
+        {'name': 'admin', 'description': 'Аутентификация админа/партнёра'},
     ],
     'paths': {
         '/catalog/import': {
@@ -205,7 +205,7 @@ OPENAPI = {
         '/admin/login': {
             'post': {
                 'tags': ['admin'],
-                'summary': 'Вход оператора (возвращает JWT)',
+                'summary': 'Вход админа/партнёра (возвращает JWT)',
                 'requestBody': {'content': {'application/json': {'schema': {'type': 'object', 'properties': {
                     'username': {'type': 'string'}, 'password': {'type': 'string'}}}}}},
                 'responses': _ok(),

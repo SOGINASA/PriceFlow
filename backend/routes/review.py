@@ -16,27 +16,27 @@ from services.normalization_service import match_service, learn_synonym, MANUAL
 review_bp = Blueprint('review', __name__)
 
 
-def operator_required(fn):
-    """Очереди верификации и матчинг доступны только оператору/админу (ТЗ 4.6).
+def admin_required(fn):
+    """Очереди верификации и матчинг доступны только админу (ТЗ 4.6).
 
     Без этого любой мог бы менять привязки и «отравлять» обучаемые синонимы
     через неаутентифицированный /match."""
     @wraps(fn)
     def wrapper(*args, **kwargs):
         verify_jwt_in_request()
-        if get_jwt().get('role') not in (Role.OPERATOR, Role.ADMIN):
-            return jsonify({'error': 'Требуется роль оператора'}), 403
+        if get_jwt().get('role') != Role.ADMIN:
+            return jsonify({'error': 'Требуются права администратора'}), 403
         return fn(*args, **kwargs)
     return wrapper
 
 
 def _current_user_id():
-    """Идентификатор оператора из JWT (токен уже проверен operator_required)."""
+    """Идентификатор админа из JWT (токен уже проверен admin_required)."""
     return get_jwt_identity()
 
 
 @review_bp.route('/unmatched', methods=['GET'])
-@operator_required
+@admin_required
 def unmatched():
     """Позиции без привязки к справочнику + топ-подсказка из match_service."""
     items = (PriceItem.query
@@ -55,7 +55,7 @@ def unmatched():
 
 
 @review_bp.route('/needs-review', methods=['GET'])
-@operator_required
+@admin_required
 def needs_review():
     items = (PriceItem.query
              .filter(PriceItem.has_anomaly.is_(True), PriceItem.is_active.is_(True))
@@ -64,7 +64,7 @@ def needs_review():
 
 
 @review_bp.route('/match', methods=['POST'])
-@operator_required
+@admin_required
 def match():
     """Ручное сопоставление: {item_id, service_id} или создать новую услугу."""
     data = request.get_json() or {}
@@ -101,7 +101,7 @@ def match():
 
 
 @review_bp.route('/verify', methods=['POST'])
-@operator_required
+@admin_required
 def verify():
     """Подтвердить/отклонить/скорректировать позицию (ТЗ 4.4).
 

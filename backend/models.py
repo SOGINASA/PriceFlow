@@ -268,10 +268,9 @@ class PriceItem(db.Model):
 # ---------------------------------------------------------------------------
 class Role:
     USER = 'user'
-    OPERATOR = 'operator'   # верифицирует очереди
-    ADMIN = 'admin'
+    ADMIN = 'admin'         # ведёт очередь верификации + аналитика платформы
     PARTNER = 'partner'     # клиника редактирует свой прайс (кабинет партнёра)
-    ALL = (USER, OPERATOR, ADMIN, PARTNER)
+    ALL = (USER, ADMIN, PARTNER)
 
 
 class User(db.Model):

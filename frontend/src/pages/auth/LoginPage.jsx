@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   // Вход по email/паролю через бэкенд (POST /api/admin/login).
-  // Доступен операторам, админам и партнёрам (клиникам). Маршрут зависит от роли.
+  // Доступен админам и партнёрам (клиникам). Маршрут зависит от роли.
   const handleLogin = async () => {
     if (busy) return;
     setError("");
@@ -28,14 +28,8 @@ export default function LoginPage() {
         token: res.access_token,
         partnerId: res.user?.partner_id || null,
       });
-      // Партнёр → его кабинет; оператор → очередь верификации; админ → аналитика платформы.
-      navigate(
-        role === "partner"
-          ? "/app/my-prices"
-          : role === "operator"
-          ? "/app/verification"
-          : "/app/admin"
-      );
+      // Партнёр → его кабинет; админ → аналитика платформы.
+      navigate(role === "partner" ? "/app/my-prices" : "/app/admin");
     } catch (e) {
       setError("Неверный email или пароль");
     } finally {
@@ -51,7 +45,7 @@ export default function LoginPage() {
         <div className="rounded-3xl border border-white/[0.09] p-7 bg-[rgba(20,20,28,0.72)] backdrop-blur-[22px] shadow-card">
           {/* Email / пароль */}
           <div className="flex flex-col gap-3">
-            <Field label="Email" type="email" placeholder="operator@medarchive.kz" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Field label="Email" type="email" placeholder="partner@alfa.kz" value={email} onChange={(e) => setEmail(e.target.value)} />
             <Field label="Пароль" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleLogin()} />
             {error && (
               <div className="text-[13px] font-semibold px-[14px] py-[10px] rounded-[11px] border" style={{ background: "rgba(255,95,87,.1)", borderColor: "rgba(255,95,87,.3)", color: "#FF8B85" }}>
@@ -66,7 +60,7 @@ export default function LoginPage() {
               {busy ? "Вход…" : "Войти"}
             </button>
             <p className="text-[12px] text-ink/35 text-center mt-1">
-              Демо-доступ оператора: <span className="text-ink/55">operator@medarchive.kz / operator123</span>
+              Демо-доступ партнёра: <span className="text-ink/55">partner@alfa.kz / partner123</span>
             </p>
           </div>
         </div>
