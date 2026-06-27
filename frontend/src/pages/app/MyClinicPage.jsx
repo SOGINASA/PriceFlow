@@ -31,7 +31,9 @@ export default function MyClinicPage() {
   // Синхронизируем форму, когда клиника загрузится/сменится.
   useEffect(() => setForm(clinic), [clinic]);
 
-  if (!form) return null;
+  // Гард по clinic И form: при выходе из аккаунта clinic обнуляется, а form
+  // может ещё хранить старое значение — рендер ниже обращается к clinic.* напрямую.
+  if (!clinic || !form) return null;
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const save = async () => {
