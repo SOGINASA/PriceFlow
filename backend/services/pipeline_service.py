@@ -49,6 +49,17 @@ def process_document(doc_id: str):
 
         val.validate_effective_date(doc.effective_date, log)
         index = norm._build_index()
+
+        # Прогреваем семантику (загрузка модели + эмбеддинги справочника) и
+        # коммитим метаданные документа ДО цикла вставки. Иначе первая же позиция
+        # тянет загрузку модели на десятки секунд под уже открытым BEGIN IMMEDIATE,
+        # лок записи висит дольше busy_timeout, и параллельные запросы (поллинг
+        # статуса, следующий документ пакета) валятся с "database is locked".
+        # commit здесь же снимает read-лок прогрева — пишущую транзакцию открываем
+        # только на сам цикл записи позиций, держим её минимально.
+        norm.warm_semantic_cache(index)
+        db.session.commit()
+
         auto_matched = 0
 
         for row in result.rows:

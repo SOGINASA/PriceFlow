@@ -68,6 +68,16 @@ def create_app(config_object=None):
             except Exception as e:  # noqa: BLE001 — сид не должен ронять старт
                 print(f"[seed] skipped: {e}")
 
+        # Закрыть ВСЕ стартовые соединения пула. На SQLite каждая транзакция
+        # открывается как BEGIN IMMEDIATE (write-lock). Если idle-соединение из
+        # пула осталось с незакрытой транзакцией (а под reloader/venv-стабом
+        # процессов несколько, и reloader-родитель создаёт app, но запросов не
+        # обслуживает — просто сидит с открытым пулом), такой коннект пинит
+        # write-lock SQLite навсегда → все последующие записи ждут busy_timeout и
+        # падают с "database is locked". dispose() гарантированно отдаёт локи;
+        # рабочему процессу соединения переоткроются лениво на первом запросе.
+        db.engine.dispose()
+
     # --- Регистрация блюпринтов ---
     from routes.catalog import catalog_bp
     from routes.upload import upload_bp
@@ -94,6 +104,20 @@ def create_app(config_object=None):
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(rates_bp, url_prefix='/api/rates')
+
+    # SQLite: GET-запросы открываем как DEFERRED (read-транзакция, без write-lock),
+    # пишущие — как IMMEDIATE. Иначе поллинг (дашборд/архивы) во время загрузки
+    # конкурирует за единственный write-lock и ловит "database is locked".
+    from flask import request
+    from models import set_tx_mode
+
+    @app.before_request
+    def _tx_mode_by_method():
+        set_tx_mode('DEFERRED' if request.method in ('GET', 'HEAD', 'OPTIONS') else 'IMMEDIATE')
+
+    @app.teardown_request
+    def _tx_mode_reset(_exc=None):
+        set_tx_mode('IMMEDIATE')  # вернуть безопасный дефолт для переиспользуемого треда
 
     @app.route('/api')
     def health():
@@ -153,4 +177,9 @@ app = create_app()
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5252, debug=True)
+    # Reloader ВЫКЛ по умолчанию: с venv-launcher'ом он плодил вложенные процессы
+    # (4 шт.), каждый со своим пулом соединений к одному dev.db — лишняя
+    # конкуренция за write-lock SQLite и риск утечки незакрытой транзакции.
+    # Включить автоперезагрузку при необходимости: FLASK_RELOAD=1.
+    use_reloader = os.environ.get('FLASK_RELOAD', '0') == '1'
+    app.run(host='0.0.0.0', port=5252, debug=True, use_reloader=use_reloader)
