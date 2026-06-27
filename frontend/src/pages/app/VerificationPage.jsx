@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { reviewApi, servicesApi, partnersApi } from "../../api";
+import { reviewApi, servicesApi, partnersApi, archivesApi } from "../../api";
 import { useToast } from "../../components/ui/Toast";
 
 // ---------- Очередь верификации оператора (ТЗ 4.3 / 4.4 / 4.6) ----------
@@ -42,17 +42,22 @@ export default function VerificationPage() {
   const [anomalies, setAnomalies] = useState([]);
   const [services, setServices] = useState([]);
   const [partners, setPartners] = useState({});
+  const [docNames, setDocNames] = useState({}); // { doc_id: file_name } — исходный документ
   // Локальный выбор услуги/нового названия по item_id.
   const [choice, setChoice] = useState({}); // { [item_id]: { serviceId, newName } }
+  // Режим ручной корректировки цены аномалии.
+  const [correctId, setCorrectId] = useState(null);
+  const [correctForm, setCorrectForm] = useState({ resident: "", nonResident: "" });
 
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [u, a, s, p] = await Promise.all([
+      const [u, a, s, p, docs] = await Promise.all([
         reviewApi.unmatched(),
         reviewApi.needsReview(),
         servicesApi.list({}),
         partnersApi.list({}),
+        archivesApi.list({}),
       ]);
       setUnmatched(Array.isArray(u) ? u : []);
       setAnomalies(Array.isArray(a) ? a : []);
@@ -60,6 +65,9 @@ export default function VerificationPage() {
       const map = {};
       (Array.isArray(p) ? p : []).forEach((pp) => { map[pp.partner_id] = pp; });
       setPartners(map);
+      const dmap = {};
+      (Array.isArray(docs) ? docs : []).forEach((d) => { dmap[d.doc_id] = d.file_name; });
+      setDocNames(dmap);
     } catch (e) {
       toast("Не удалось загрузить очередь — проверьте бэкенд");
     } finally {
@@ -73,6 +81,7 @@ export default function VerificationPage() {
   }, []);
 
   const partnerName = (id) => partners[id]?.name || "Клиника";
+  const sourceName = (docId) => docNames[docId];
 
   const setItemChoice = (itemId, patch) =>
     setChoice((c) => ({ ...c, [itemId]: { ...c[itemId], ...patch } }));
@@ -104,6 +113,29 @@ export default function VerificationPage() {
       toast(action === "confirm" ? "Цена подтверждена" : "Позиция отклонена");
     } catch {
       toast("Ошибка верификации");
+    }
+  };
+
+  // Открыть инлайн-корректировку цены аномалии.
+  const startCorrect = (item) => {
+    setCorrectId(item.item_id);
+    setCorrectForm({ resident: item.price_resident_kzt ?? "", nonResident: item.price_nonresident_kzt ?? "" });
+  };
+
+  // Сохранить исправленную цену (action=correct → подтверждает и снимает аномалию).
+  const handleCorrect = async (item) => {
+    try {
+      await reviewApi.verify({
+        item_id: item.item_id,
+        action: "correct",
+        price_resident: Number(correctForm.resident) || 0,
+        price_nonresident: correctForm.nonResident === "" ? null : Number(correctForm.nonResident),
+      });
+      setAnomalies((list) => list.filter((i) => i.item_id !== item.item_id));
+      setCorrectId(null);
+      toast("Цена исправлена и подтверждена");
+    } catch {
+      toast("Ошибка сохранения");
     }
   };
 
@@ -146,6 +178,12 @@ export default function VerificationPage() {
                       <div className="text-[12.5px] text-ink/45 mt-[3px]">
                         {partnerName(item.partner_id)} · резидент {fmt(item.price_resident_kzt)} ₸
                       </div>
+                      {sourceName(item.doc_id) && (
+                        <div className="inline-flex items-center gap-[6px] text-[11.5px] text-ink/40 mt-[5px]">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v4h4" /></svg>
+                          источник: {sourceName(item.doc_id)}
+                        </div>
+                      )}
                     </div>
                     {item.suggestion && (
                       <div className="inline-flex items-center gap-[7px] px-[11px] py-[6px] rounded-[10px] text-[12px] font-semibold border" style={{ background: "rgba(94,92,230,.12)", borderColor: "rgba(94,92,230,.3)", color: "#9DB0FF" }}>
@@ -195,36 +233,76 @@ export default function VerificationPage() {
           <EmptyState text="Аномалий цен нет. Все позиции в пределах ожидаемого диапазона." />
         ) : (
           <div className="flex flex-col gap-[12px]">
-            {anomalies.map((item, i) => (
-              <div key={item.item_id} className="rounded-[16px] bg-white/[.025] border p-[18px] animate-fade-up flex flex-wrap items-center justify-between gap-3" style={{ borderColor: "rgba(255,193,94,.25)", animationDelay: `${i * 35}ms` }}>
-                <div className="min-w-0">
-                  <div className="inline-flex items-center gap-[7px] mb-[6px] text-[11.5px] font-semibold px-[9px] py-[3px] rounded-md" style={{ background: "rgba(255,193,94,.14)", color: "#FFD37E" }}>
-                    <span className="w-[6px] h-[6px] rounded-full" style={{ background: "#FFC15E" }} />
-                    Аномалия цены
+            {anomalies.map((item, i) => {
+              const correcting = correctId === item.item_id;
+              return (
+              <div key={item.item_id} className="rounded-[16px] bg-white/[.025] border p-[18px] animate-fade-up" style={{ borderColor: "rgba(255,193,94,.25)", animationDelay: `${i * 35}ms` }}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="inline-flex items-center gap-[7px] mb-[6px] text-[11.5px] font-semibold px-[9px] py-[3px] rounded-md" style={{ background: "rgba(255,193,94,.14)", color: "#FFD37E" }}>
+                      <span className="w-[6px] h-[6px] rounded-full" style={{ background: "#FFC15E" }} />
+                      Аномалия цены
+                    </div>
+                    <div className="text-[15px] font-semibold">{item.service_name_raw}</div>
+                    <div className="text-[12.5px] text-ink/45 mt-[3px]">
+                      {partnerName(item.partner_id)} · резидент {fmt(item.price_resident_kzt)} ₸ · нерезидент {fmt(item.price_nonresident_kzt)} ₸
+                    </div>
+                    {sourceName(item.doc_id) && (
+                      <div className="inline-flex items-center gap-[6px] text-[11.5px] text-ink/40 mt-[5px]">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v4h4" /></svg>
+                        источник: {sourceName(item.doc_id)}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-[15px] font-semibold">{item.service_name_raw}</div>
-                  <div className="text-[12.5px] text-ink/45 mt-[3px]">
-                    {partnerName(item.partner_id)} · резидент {fmt(item.price_resident_kzt)} ₸ · нерезидент {fmt(item.price_nonresident_kzt)} ₸
+                  <div className="flex items-center gap-[10px]">
+                    <button
+                      onClick={() => handleVerify(item, "confirm")}
+                      className="px-[16px] py-[10px] rounded-[11px] text-[13.5px] font-semibold border transition-all"
+                      style={{ background: "rgba(48,209,88,.12)", borderColor: "rgba(48,209,88,.3)", color: "#5BE892" }}
+                    >
+                      Подтвердить
+                    </button>
+                    <button
+                      onClick={() => (correcting ? setCorrectId(null) : startCorrect(item))}
+                      className="px-[16px] py-[10px] rounded-[11px] text-[13.5px] font-semibold border border-primary/30 bg-primary/[0.12] text-lav transition-all hover:bg-primary/20"
+                    >
+                      {correcting ? "Отмена" : "Исправить"}
+                    </button>
+                    <button
+                      onClick={() => handleVerify(item, "reject")}
+                      className="px-[16px] py-[10px] rounded-[11px] text-[13.5px] font-semibold border transition-all"
+                      style={{ background: "rgba(255,95,87,.1)", borderColor: "rgba(255,95,87,.3)", color: "#FF8B85" }}
+                    >
+                      Отклонить
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-[10px]">
-                  <button
-                    onClick={() => handleVerify(item, "confirm")}
-                    className="px-[16px] py-[10px] rounded-[11px] text-[13.5px] font-semibold border transition-all"
-                    style={{ background: "rgba(48,209,88,.12)", borderColor: "rgba(48,209,88,.3)", color: "#5BE892" }}
-                  >
-                    Подтвердить
-                  </button>
-                  <button
-                    onClick={() => handleVerify(item, "reject")}
-                    className="px-[16px] py-[10px] rounded-[11px] text-[13.5px] font-semibold border transition-all"
-                    style={{ background: "rgba(255,95,87,.1)", borderColor: "rgba(255,95,87,.3)", color: "#FF8B85" }}
-                  >
-                    Отклонить
-                  </button>
-                </div>
+
+                {/* Инлайн-корректировка цены (оператор правит → дообучение) */}
+                {correcting && (
+                  <div className="mt-[14px] pt-[14px] border-t border-white/[0.06] flex flex-wrap items-end gap-3 animate-fade-up">
+                    <label className="flex flex-col gap-[6px]">
+                      <span className="text-[12px] text-ink/55 font-semibold">Резидент, ₸</span>
+                      <input type="number" inputMode="numeric" value={correctForm.resident}
+                        onChange={(e) => setCorrectForm({ ...correctForm, resident: e.target.value })}
+                        className="w-[150px] bg-[#0E0E14] border border-white/10 rounded-[11px] px-[13px] py-[10px] text-[13.5px] text-ink outline-none focus:border-primary/50" />
+                    </label>
+                    <label className="flex flex-col gap-[6px]">
+                      <span className="text-[12px] text-ink/55 font-semibold">Нерезидент, ₸</span>
+                      <input type="number" inputMode="numeric" value={correctForm.nonResident}
+                        onChange={(e) => setCorrectForm({ ...correctForm, nonResident: e.target.value })}
+                        className="w-[150px] bg-[#0E0E14] border border-white/10 rounded-[11px] px-[13px] py-[10px] text-[13.5px] text-ink outline-none focus:border-primary/50" />
+                    </label>
+                    <button
+                      onClick={() => handleCorrect(item)}
+                      className="px-[18px] py-[10px] rounded-[11px] text-white text-[13.5px] font-semibold bg-brand shadow-brand transition-transform hover:-translate-y-[1px]"
+                    >
+                      Сохранить
+                    </button>
+                  </div>
+                )}
               </div>
-            ))}
+            );})}
           </div>
         )
       )}

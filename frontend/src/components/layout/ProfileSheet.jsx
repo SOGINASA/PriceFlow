@@ -29,8 +29,18 @@ export default function ProfileSheet() {
       go("/app/my-prices");
       return;
     }
+    if (next === "admin") {
+      try {
+        const res = await adminApi.login({ username: "admin@medarchive.kz", password: "admin123" });
+        setSession({ user: { name: res.user?.full_name || "Администратор", email: "admin@medarchive.kz" }, role: "admin", token: res.access_token, partnerId: null });
+      } catch {
+        setRole("admin");
+      }
+      go("/app/admin");
+      return;
+    }
     setRole(next);
-    if (role === "partner") go("/app/upload");
+    if (role === "partner" || role === "admin") go("/app/upload");
   };
 
   const handleLogout = () => {

@@ -19,13 +19,20 @@ def search():
     if not q:
         return jsonify({'services': [], 'partners': []})
 
-    like = f'%{q}%'
-    services = (Service.query
-                .filter(Service.service_name.ilike(like), Service.is_active.is_(True))
-                .limit(50).all())
-    partners = (Partner.query
-                .filter(Partner.name.ilike(like))
-                .limit(50).all())
+    # Регистронезависимый поиск на стороне Python: SQLite LIKE/ILIKE не учитывает
+    # регистр кириллицы. casefold() корректно сравнивает «Консультация»≈«консультация».
+    # Заодно ищем по синонимам услуги и по городу клиники.
+    ql = q.casefold()
+
+    def svc_match(s):
+        if ql in (s.service_name or '').casefold():
+            return True
+        return any(ql in str(syn).casefold() for syn in (s.synonyms or []))
+
+    services = [s for s in Service.query.filter(Service.is_active.is_(True)).limit(2000).all()
+                if svc_match(s)][:50]
+    partners = [p for p in Partner.query.limit(2000).all()
+                if ql in (p.name or '').casefold() or ql in (p.city or '').casefold()][:50]
 
     # к каждой найденной услуге — краткая сводка цен для перехода в сравнение (П.5)
     services_out = []
